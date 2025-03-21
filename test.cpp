@@ -49,30 +49,59 @@ int main() {
   init_openssl();
   SSL_CTX* ctx = create_ssl_context();
 
-  const std::string hostname = "httpbin.org";
+  const std::string hostname = "api.binance.com";
   const int port = 443;
+  const std::string proxyHostname = "127.0.0.1";
+  const int proxyPort = 20112;
 
   // Resolve IP.
-  std::string ip = resolveHostname(hostname);
+  std::string ip = resolveHostname(proxyHostname);
 
   struct sockaddr_in server_addr;
   server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(port);
+  server_addr.sin_port = htons(proxyPort);
   inet_pton(AF_INET, ip.data(), &server_addr.sin_addr);
 
   int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (sock_fd < 0) {
     throw std::runtime_error(std::string("Failed creating socket: ") +
                              std::strerror(errno));
-    return 1;
   }
 
   if (connect(sock_fd, reinterpret_cast<struct sockaddr*>(&server_addr),
               sizeof(server_addr)) < 0) {
-    throw std::runtime_error(std::string("Failed connecting to server: ") +
-                             std::strerror(errno));
     close(sock_fd);
-    return 1;
+    throw std::runtime_error(std::string("Failed connecting to proxy: ") +
+                             std::strerror(errno));
+  }
+
+  std::string connect_cmd = "CONNECT " + hostname + ":" + std::to_string(port) +
+                            " HTTP/1.1\r\n"
+                            "Host: " +
+                            hostname + ":" + std::to_string(port) +
+                            "\r\n"
+                            "Proxy-Connection: Keep-Alive\r\n\r\n";
+
+  if (send(sock_fd, connect_cmd.data(), connect_cmd.size(), 0) < 0) {
+    close(sock_fd);
+    std::runtime_error(
+        std::string("Failed establish connection on the proxy: ") +
+        std::strerror(errno));
+  }
+
+  char buffer[1024];
+  ssize_t bytes = recv(sock_fd, buffer, sizeof(buffer), 0);
+  if (bytes <= 0) {
+    close(sock_fd);
+    close(1);
+    std::runtime_error(std::string("Proxy response error: ") +
+                       std::strerror(errno));
+  }
+
+  std::string response(buffer, bytes);
+  if (response.find("200 Connection established") == std::string::npos) {
+    close(sock_fd);
+    std::runtime_error(std::string("Proxy error: ") + std::strerror(errno));
   }
 
   // Create SSL object and bind socket.
@@ -85,14 +114,14 @@ int main() {
     ERR_print_errors_fp(stderr);
     SSL_free(ssl);
     close(sock_fd);
-    return EXIT_FAILURE;
+    throw std::runtime_error(std::string("Failed established SSL handshake"));
   }
 
   std::cout << "SSL connected using cipher: " << SSL_get_cipher(ssl)
             << std::endl;
 
   std::string request =
-      "GET /get HTTP/1.1\r\n"
+      "GET /api/v3/time HTTP/1.1\r\n"
       "Host: " +
       hostname +
       "\r\n"
@@ -100,10 +129,6 @@ int main() {
       "Connection: close\r\n\r\n";
 
   SSL_write(ssl, request.data(), request.size());
-
-  char buffer[1024];
-  std::string response;
-  ssize_t bytes;
 
   while ((bytes = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
     response.append(buffer, bytes);
