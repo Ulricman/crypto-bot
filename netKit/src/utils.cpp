@@ -27,4 +27,29 @@ std::string resolveHostname(const std::string& hostname) {
   return resolveHostname(hostname.data());
 }
 
+// Initialize OpenSSL library.
+void initOpenssl() {
+  SSL_load_error_strings();
+  OpenSSL_add_ssl_algorithms();
+}
+
+// Cleanup OpenSSL resources.
+void cleanupOpenssl() { EVP_cleanup(); }
+
+SSL_CTX* createSSLContext(const char* caPath) {
+  const SSL_METHOD* method = TLS_client_method();
+  SSL_CTX* ctx = SSL_CTX_new(method);
+
+  if (!ctx) {
+    ERR_print_errors_fp(stderr);
+    throw std::runtime_error("Failed creating SSL context");
+  }
+
+  // Verify CA.
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr);
+  SSL_CTX_load_verify_locations(ctx, caPath, nullptr);
+
+  return ctx;
+}
+
 }  // namespace netkit
