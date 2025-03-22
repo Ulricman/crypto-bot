@@ -12,11 +12,11 @@ find_package(OpenSSL REQUIRED)
 add_subdirectory("${CMAKE_SOURCE_DIR}/json")
 add_subdirectory("${CMAKE_SOURCE_DIR}/curl")
 
-set(netkitIncludeDir ${CMAKE_SOURCE_DIR}/netKit/include)
+set(netkitIncludeDir ${CMAKE_SOURCE_DIR}/netkit/include)
 set(cexkitIncludeDir ${CMAKE_SOURCE_DIR}/cexKit/include)
 include_directories(${netkitIncludeDir} ${cexkitIncludeDir})
 file(GLOB Sources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/*.cpp)
-file(GLOB netkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/netKit/src/*.cpp)
+file(GLOB netkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/netkit/src/*.cpp)
 file(GLOB cexkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/cexKit/src/*.cpp)
 
 foreach(Source ${Sources})

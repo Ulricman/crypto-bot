@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "netKit/proxy.hpp"
+#include "netkit/proxy.hpp"
 
 namespace netkit {
 

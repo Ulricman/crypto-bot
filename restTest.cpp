@@ -14,9 +14,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "netKit/proxy.hpp"
-#include "netKit/rest.hpp"
-#include "netKit/utils.hpp"
+#include "netkit/proxy.hpp"
+#include "netkit/rest.hpp"
+#include "netkit/utils.hpp"
 #include "nlohmann/json.hpp"
 
 using json = nlohmann::json;

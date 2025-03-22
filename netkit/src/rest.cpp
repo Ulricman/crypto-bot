@@ -1,4 +1,4 @@
-#include "netKit/rest.hpp"
+#include "netkit/rest.hpp"
 
 namespace netkit {
 
