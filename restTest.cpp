@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -16,23 +17,36 @@
 #include "netKit/proxy.hpp"
 #include "netKit/rest.hpp"
 #include "netKit/utils.hpp"
+#include "nlohmann/json.hpp"
+
+using json = nlohmann::json;
+
+void readConfig(const char* configPath) {
+  std::ifstream file(configPath);
+  json config;
+  file >> config;
+}
 
 int main() {
-  // Basic settings.
-  const char* caPath = "/etc/ssl/certs/ca-certificates.crt";
-  const std::string apiKey =
-      "KiuKcWHgGD16UkX5JOS6hdkkl84fxHkKnKSA6j16bGnm0qHFsdTbK3fZoKnGJ0pj";
-  const std::string secretKey =
-      "7nz1JfEHEZ2GoNuLemwBXirEEpwZtYMgpmw75XlaKTBeBMzfmYevH92Bvtdygiwn";
+  // Read configs.
+  const char* configPath = "/home/jeffrey/crypto-bot/config.json";
+  std::ifstream file(configPath);
+  json config;
+  file >> config;
+  file.close();
+
+  const std::string caPath = config["ca_path"];
+  const std::string apiKey = config["api_key"];
+  const std::string secretKey = config["api_secret"];
 
   const std::string hostname = "api.binance.com";
   const int port = 443;
-  const std::string proxyHostname = "127.0.0.1";
-  const int proxyPort = 20112;
+  const std::string proxyHostname = config["proxy_host"];
+  const int proxyPort = config["proxy_port"];
 
   // Main parts.
-  netkit::Agent agent(hostname, port, caPath, apiKey, secretKey, proxyHostname,
-                      proxyPort);
+  netkit::Agent agent(hostname, port, caPath.data(), apiKey, secretKey,
+                      proxyHostname, proxyPort);
 
   // std::cout << agent.sendPublicRequest("/api/v3/depth", {{"symbol",
   // "SOLUSDT"}})

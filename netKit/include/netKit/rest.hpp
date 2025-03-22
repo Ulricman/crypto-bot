@@ -33,7 +33,7 @@ class Agent {
 
  public:
   Agent(const std::string& hostname, const unsigned int port,
-        const char* caPath, const std::string& apiKey,
+        const std::string& caPath, const std::string& apiKey,
         const std::string& apiSecret, const std::string& proxyHostname = "",
         const unsigned int proxyPort = 0);
   Agent(const Agent&) = delete;

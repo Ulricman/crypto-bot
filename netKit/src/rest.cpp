@@ -3,7 +3,7 @@
 namespace netkit {
 
 Agent::Agent(const std::string& hostname, const unsigned int port,
-             const char* caPath, const std::string& apiKey,
+             const std::string& caPath, const std::string& apiKey,
              const std::string& apiSecret, const std::string& proxyHostname,
              const unsigned int proxyPort)
     : hostname_(hostname),
@@ -26,7 +26,7 @@ Agent::Agent(const std::string& hostname, const unsigned int port,
 
   // Initialize OpenSSL and define SSL context.
   initOpenssl();
-  ctx_ = createSSLContext(caPath);
+  ctx_ = createSSLContext(caPath.data());
 
   // Create SSL object and bind to socket.
   ssl_ = SSL_new(ctx_);
