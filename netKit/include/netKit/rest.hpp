@@ -1,5 +1,5 @@
-#ifndef __NETKIT_HTTPS_HPP__
-#define __NETKIT_HTTPS_HPP__
+#ifndef __NETKIT_REST_HPP__
+#define __NETKIT_REST_HPP__
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>

@@ -13,8 +13,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "netKit/https.hpp"
 #include "netKit/proxy.hpp"
+#include "netKit/rest.hpp"
 #include "netKit/utils.hpp"
 
 int main() {
