@@ -21,20 +21,34 @@ class Agent {
   int sockFd_;
   SSL_CTX* ctx_;
   SSL* ssl_;
+  const std::string apiKey_;
+  const std::string apiSecret_;
+
+ private:
+  std::string joinParams(
+      const std::unordered_map<std::string, std::string>& params);
+  std::string executeRequest(
+      const std::string& url, const std::string& httpMethod,
+      const std::unordered_map<std::string, std::string>& headers = {});
 
  public:
-  Agent(const std::string& _hostname_, const unsigned int _port_,
-        const char* caPath, const std::string& _proxyHostname_ = "",
-        const unsigned int _proxyPort_ = 0);
+  Agent(const std::string& hostname, const unsigned int port,
+        const char* caPath, const std::string& apiKey,
+        const std::string& apiSecret, const std::string& proxyHostname = "",
+        const unsigned int proxyPort = 0);
   Agent(const Agent&) = delete;
   Agent& operator=(const Agent&) = delete;
   Agent(Agent&&) = delete;
   Agent& operator=(Agent&&) = delete;
-
-  std::string request(
-      const std::string& url,
-      const std::unordered_map<std::string, std::string>& params);
   ~Agent();
+
+  std::string sendPublicRequest(
+      std::string url, const std::string& httpMethod,
+      const std::unordered_map<std::string, std::string>& params = {});
+  std::string sendSignedRequest(
+      std::string url, const std::string& httpMethod,
+      const std::unordered_map<std::string, std::string>& params = {});
+
 };  // Agent
 
 }  // namespace netkit

@@ -52,4 +52,38 @@ SSL_CTX* createSSLContext(const char* caPath) {
   return ctx;
 }
 
+std::string getTimestamp() {
+  auto msSinceEpoch = duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+  return std::to_string(msSinceEpoch);
+}
+
+// Copied from
+// https://github.dev/binance/binance-signature-examples/blob/master/cpp/spot.cpp.
+std::string encryptWithHMAC(const char* key, const char* data) {
+  unsigned char* result;
+  static char res_hexstring[64];
+  int result_len = 32;
+  std::string signature;
+
+  result = HMAC(
+      EVP_sha256(), key, strlen((char*)key),
+      const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(data)),
+      strlen((char*)data), nullptr, nullptr);
+  for (int i = 0; i < result_len; i++) {
+    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+  }
+
+  for (int i = 0; i < 64; i++) {
+    signature += res_hexstring[i];
+  }
+
+  return signature;
+}
+
+std::string getSignature(const std::string& key, const std::string& data) {
+  return encryptWithHMAC(key.data(), data.data());
+}
+
 }  // namespace netkit

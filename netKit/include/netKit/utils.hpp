@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -28,6 +30,14 @@ void initOpenssl();
 void cleanupOpenssl();
 
 SSL_CTX* createSSLContext(const char* caPath);
+
+// Other helper functions.
+
+std::string getTimestamp();
+
+std::string encryptWithHMAC(const char* key, const char* data);
+
+std::string getSignature(const std::string& key, const std::string& data);
 
 }  // namespace netkit
 

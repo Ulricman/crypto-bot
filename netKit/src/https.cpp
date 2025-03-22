@@ -3,10 +3,13 @@
 namespace netkit {
 
 Agent::Agent(const std::string& hostname, const unsigned int port,
-             const char* caPath, const std::string& proxyHostname,
+             const char* caPath, const std::string& apiKey,
+             const std::string& apiSecret, const std::string& proxyHostname,
              const unsigned int proxyPort)
     : hostname_(hostname),
       port_(port),
+      apiKey_(apiKey),
+      apiSecret_(apiSecret),
       proxyHostname_(proxyHostname),
       proxyPort_(proxyPort) {
   // Create socket or proxy tunnel if proxy is given.
@@ -38,49 +41,8 @@ Agent::Agent(const std::string& hostname, const unsigned int port,
     throw std::runtime_error(std::string("SSL handshake failed"));
   }
 
-  std::cout << "SSL connected using cipher: " << SSL_get_cipher(ssl_)
-            << std::endl;
-}
-
-std::string Agent::request(
-    const std::string& url,
-    const std::unordered_map<std::string, std::string>& params) {
-  std::ostringstream oss;
-  oss << "GET " << url;
-
-  // Append params to url.
-  if (!params.empty()) {
-    oss << "?";
-    for (auto it = params.begin(); it != params.end(); ++it) {
-      if (it != params.begin()) {
-        oss << "&";
-      }
-      oss << it->first << "=" << it->second;
-    }
-  }
-
-  oss << " HTTP/1.1\r\nHost: " << hostname_ << "\r\n"
-      << "User-Agent: OpenSSL/1.1.1\r\nConnection: close\r\n\r\n";
-
-  // Send request.
-  std::string msg = oss.str();
-  SSL_write(ssl_, msg.data(), msg.size());
-
-  // Receive response.
-  std::string response;
-  char buffer[1024];
-  ssize_t bytes;
-  while ((bytes = SSL_read(ssl_, buffer, sizeof(buffer))) > 0) {
-    response.append(buffer, bytes);
-  }
-
-  // Skip the response header.
-  auto header = response.find("\r\n\r\n");
-  if (header != std::string::npos) {
-    response = response.substr(header + 4);
-  }
-
-  return response;
+  // std::cout << "SSL connected using cipher: " << SSL_get_cipher(ssl_)
+  //           << std::endl;
 }
 
 Agent::~Agent() {
@@ -90,6 +52,95 @@ Agent::~Agent() {
   close(sockFd_);
   SSL_CTX_free(ctx_);
   cleanupOpenssl();
+}
+
+std::string Agent::executeRequest(
+    const std::string& url, const std::string& httpMethod,
+    const std::unordered_map<std::string, std::string>& headers) {
+  std::ostringstream oss;
+
+  // Perpare HTTPS request message.
+  oss << httpMethod << " " << url << " HTTP/1.1\r\n";
+  oss << "Host: " << hostname_ << "\r\n";
+  for (const auto& header : headers) {
+    oss << header.first << ":" << header.second << "\r\n";
+  }
+  oss << "User-Agent: OpenSSL/1.1.1\r\nConnection: close\r\n\r\n";
+
+  // Send HTTPS request.
+  std::string message = oss.str();
+  if (SSL_write(ssl_, message.data(), message.size()) <= 0) {
+    std::cerr << "Failed sending HTTPS request\n";
+    ERR_print_errors_fp(stderr);
+    return "";
+  }
+
+  // Receive HTTPS response.
+  std::string response;
+  char buffer[1024];
+  ssize_t bytes;
+  while ((bytes = SSL_read(ssl_, buffer, sizeof(buffer))) > 0) {
+    response.append(buffer, bytes);
+  }
+
+  // TODO: Make Skip headers or not as an option.
+  // Skip the response headers.
+  auto headerIt = response.find("\r\n\r\n");
+  if (headerIt != std::string::npos) {
+    response = response.substr(headerIt + 4);
+  }
+  return response;
+}
+
+std::string Agent::joinParams(
+    const std::unordered_map<std::string, std::string>& params) {
+  std::string query;
+  for (auto it = params.cbegin(); it != params.cend(); ++it) {
+    if (it != params.cbegin()) {
+      query += "&";
+    }
+    query += it->first + "=" + it->second;
+  }
+  return query;
+}
+
+std::string Agent::sendPublicRequest(
+    std::string url, const std::string& httpMethod,
+    const std::unordered_map<std::string, std::string>& params) {
+  std::ostringstream oss;
+
+  // Append params to url.
+  if (!params.empty()) {
+    url += "?" + joinParams(params);
+  }
+
+  return executeRequest(url, httpMethod);
+}
+
+std::string Agent::sendSignedRequest(
+    std::string url, const std::string& httpMethod,
+    const std::unordered_map<std::string, std::string>& params) {
+  // Append the parameters to the url.
+  // Note that the url here does not contain host IP, but pure path.
+  url += "?";
+  std::string timestamp = getTimestamp(), query;
+
+  // Append params to url.
+  if (params.empty()) {
+    query = "timestamp=" + timestamp;
+  } else {
+    query = joinParams(params) + "&timestamp=" + timestamp;
+  }
+  url += query;
+  // Append signature to url.
+  std::string signature = getSignature(apiSecret_, query);
+  url += "&signature=" + signature;
+
+  // Define headers.
+  std::unordered_map<std::string, std::string> headers{
+      {"X-MBX-APIKEY", apiKey_}};
+
+  return executeRequest(url, httpMethod, headers);
 }
 
 }  // namespace netkit
