@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "netkit/proxy.hpp"
 #include "netkit/utils.hpp"
@@ -43,7 +44,8 @@ class Websocket {
             const unsigned int proxyPort = 0);
   ~Websocket();
 
-  void subscribe(const std::string& path);
+  void subscribe(const std::string& stream);
+  void subscribe(const std::vector<std::string>& streams);
 };  // Websocket
 
 }  // namespace netkit

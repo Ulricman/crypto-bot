@@ -89,11 +89,11 @@ std::string Websocket::parseWebsocketFrame(const char* buffer, size_t len) {
   return payload;
 }
 
-void Websocket::subscribe(const std::string& path) {
+void Websocket::subscribe(const std::string& stream) {
   // Perform Websocket handshake.
   std::string wsKey = "dGhlIHNhbXBsZSBub25jZQ==";
 
-  std::string upgradeRequest = "GET " + path +
+  std::string upgradeRequest = "GET /ws/" + stream +
                                " HTTP/1.1\r\n"
                                "Host: " +
                                hostname_ +
@@ -104,6 +104,57 @@ void Websocket::subscribe(const std::string& path) {
                                wsKey +
                                "\r\n"
                                "Sec-WebSocket-Version: 13\r\n\r\n";
+  if (SSL_write(ssl_, upgradeRequest.data(), upgradeRequest.size()) <= 0) {
+    throw std::runtime_error("Failed sending upgrade request");
+  }
+
+  char buffer[4096];
+  int bytes = SSL_read(ssl_, buffer, sizeof(buffer) - 1);
+  if (bytes <= 0) {
+    throw std::runtime_error("Failed receving websocket handshake response");
+  }
+  buffer[bytes] = '\0';
+
+  std::string response(buffer, bytes);
+  if (response.find("HTTP/1.1 101 Switching Protocols") == std::string::npos) {
+    throw std::runtime_error("Websocket handshake failed");
+  }
+
+  // Keep receving data.
+  while (true) {
+    bytes = SSL_read(ssl_, buffer, sizeof(buffer));
+    if (bytes <= 0) {
+      throw std::runtime_error("Disconnected");
+    }
+
+    // Parse websocket frame.
+    std::string payload = parseWebsocketFrame(buffer, bytes);
+    if (!payload.empty()) {
+      std::cout << payload << std::endl;
+    }
+  }
+}
+
+void Websocket::subscribe(const std::vector<std::string>& streams) {
+  // Perform Websocket handshake.
+  std::string wsKey = "dGhlIHNhbXBsZSBub25jZQ==";
+
+  std::ostringstream oss;
+  oss << "GET /stream?streams=";
+  for (auto it = streams.cbegin(); it != streams.cend(); ++it) {
+    if (it != streams.cbegin()) {
+      oss << "/";
+    }
+    oss << *it;
+  }
+  oss << " HTTP/1.1\r\n";
+  oss << "Host: " << hostname_ << "\r\n";
+  oss << "Upgrade: websocket\r\n";
+  oss << "Connection: Upgrade\r\n";
+  oss << "Sec-WebSocket-Key: " << wsKey << "\r\n";
+  oss << "Sec-WebSocket-Version: 13\r\n\r\n";
+
+  std::string upgradeRequest = oss.str();
   if (SSL_write(ssl_, upgradeRequest.data(), upgradeRequest.size()) <= 0) {
     throw std::runtime_error("Failed sending upgrade request");
   }

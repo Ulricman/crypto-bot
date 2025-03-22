@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "netkit/websocket.hpp"
 #include "nlohmann/json.hpp"
@@ -27,6 +28,7 @@ int main() {
   netkit::Websocket websocket(hostname, port, caPath, apiKey, secretKey,
                               proxyHostname, proxyPort);
 
-  const std::string path = "/ws/btcusdt@depth";
-  websocket.subscribe(path);
+  // const std::string stream = "btcusdt@depth";
+  std::vector<std::string> streams{"btcusdt@depth", "ethusdt@depth"};
+  websocket.subscribe(streams);
 }
