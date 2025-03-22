@@ -1,4 +1,4 @@
-#include "netKit/proxy.hpp"
+#include "netkit/proxy.hpp"
 
 namespace netkit {
 
