@@ -9,6 +9,7 @@
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <new>
 #include <string>
 #include <thread>
 #include <vector>

@@ -90,40 +90,52 @@ Frame Websocket::parseWebsocketFrame(const char* buffer, size_t len) {
 }
 
 void Websocket::sendWebsocketFrame(Frame frame) {
-  std::vector<unsigned char> buffer;
-  char c = (frame.fin << 3) | frame.opcode;
-  buffer.emplace_back(c);
-  if (frame.payload.size() < 126) {
-    uint8_t payloadLen = frame.payload.size();
-    payloadLen |= static_cast<uint8_t>(frame.fin) << 7;
-    buffer.emplace_back(payloadLen);
-  } else if (frame.payload.size() < 0x8000) {
-    c = 0x7E | (frame.fin << 7);
-    buffer.emplace_back(c);
-    uint16_t payloadLen = frame.payload.size();
-    buffer.emplace_back(payloadLen & 0xFF);
-    buffer.emplace_back(payloadLen & 0xFF00);
+  // Compute buffer size.
+  uint64_t payloadLen = frame.payload.size();
+  int payloadLenSize;
+  if (payloadLen < 126) {
+    payloadLenSize = 1;
+  } else if (payloadLen < 0x8000) {
+    payloadLenSize = 3;
   } else {
-    c = 0x7F | (frame.fin << 7);
-    buffer.emplace_back(c);
-    uint64_t payloadLen = frame.payload.size();
-    for (int i = 7; i <= 0; --i) {
-      buffer.emplace_back(payloadLen & (0xFF << (8 * i)));
+    payloadLenSize = 9;
+  }
+  size_t bufferSize = 1 + payloadLenSize + frame.masked * 4 + payloadLen;
+
+  unsigned char buffer[bufferSize];
+
+  buffer[0] = (frame.fin << 3) | frame.opcode;
+  if (payloadLen < 126) {
+    buffer[1] = (payloadLen & 0x7F) | (frame.masked << 7);
+  } else if (payloadLen < 0x8000) {
+    buffer[1] = (frame.masked << 7) | 0x7E;
+    buffer[2] = payloadLen & 0xFF00;
+    buffer[3] = payloadLen & 0xFF;
+  } else {
+    buffer[1] = (frame.masked << 7) | 0x7F;
+    for (int i = 0; i < 8; ++i) {
+      buffer[2 + i] = payloadLen & (0xFF << 8 * (7 - i));
     }
   }
+  ssize_t offset = 1 + payloadLenSize;
+  if (frame.masked) {
+    // Mask payload with temporarily fixed masking-key.
+    char mask[4] = {1, 2, 3, 4};
+    for (int i = 0; i < 4; ++i) {
+      buffer[offset + i] = mask[i];
+    }
+    offset += 4;
 
-  // Mask payload with temporarily fixed masking-key.
-  char mask[4] = {1, 2, 3, 4};
-  for (int i = 0; i < 4; ++i) {
-    buffer.emplace_back(mask[i]);
-  }
-
-  for (int i = 0; i < frame.payload.size(); ++i) {
-    buffer.emplace_back(frame.payload[i] ^ mask[i % 4]);
+    // Append payload.
+    for (int i = 0; i < payloadLen; ++i) {
+      buffer[offset + i] = frame.payload[i] ^ mask[i % 4];
+    }
+  } else {
+    memcpy(buffer + offset, frame.payload.data(), payloadLen);
   }
 
   // Send frame to the server.
-  SSL_write(ssl_, buffer.data(), buffer.size());
+  SSL_write(ssl_, buffer, bufferSize);
 }
 
 void Websocket::pong(Frame frame) {
