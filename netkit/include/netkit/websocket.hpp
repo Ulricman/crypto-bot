@@ -6,8 +6,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "netkit/proxy.hpp"
@@ -16,11 +19,18 @@
 namespace netkit {
 
 enum Opcode {
+  CONTINUATION_FRAME = 0x0,
   TEXT_FRAME = 0x1,
   BINARY_FRAME = 0x2,
   CLOSE_FRAME = 0x8,
   PING_FRAME = 0x9,
   PONG_FRAME = 0xA,
+};
+
+struct Frame {
+  bool fin, masked;
+  Opcode opcode;
+  std::string payload;
 };
 
 class Websocket {
@@ -35,7 +45,12 @@ class Websocket {
   const std::string apiSecret_;
 
  private:
-  std::string parseWebsocketFrame(const char* buffer, size_t len);
+  Frame parseWebsocketFrame(const char* buffer, size_t len);
+  void sendWebsocketFrame(Frame frame);
+  void streamLoop();
+
+  // TODO: use move assignment operator.
+  void pong(Frame frame);
 
  public:
   Websocket(const std::string& hostname, const unsigned int port,

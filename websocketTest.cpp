@@ -28,7 +28,7 @@ int main() {
   netkit::Websocket websocket(hostname, port, caPath, apiKey, secretKey,
                               proxyHostname, proxyPort);
 
-  // const std::string stream = "btcusdt@depth";
-  std::vector<std::string> streams{"btcusdt@depth", "ethusdt@depth"};
-  websocket.subscribe(streams);
+  const std::string stream = "btcusdt@depth@100ms";
+  // std::vector<std::string> streams{"btcusdt@depth", "ethusdt@depth"};
+  websocket.subscribe(stream);
 }
