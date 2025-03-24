@@ -140,6 +140,7 @@ void Websocket::sendWebsocketFrame(Frame frame) {
 
 void Websocket::pong(Frame frame) {
   frame.opcode = Opcode::PONG_FRAME;
+  frame.masked = true;
   sendWebsocketFrame(frame);
 }
 
