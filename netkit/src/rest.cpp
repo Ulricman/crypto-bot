@@ -2,10 +2,10 @@
 
 namespace netkit {
 
-Agent::Agent(const std::string& hostname, const unsigned int port,
-             const std::string& caPath, const std::string& apiKey,
-             const std::string& apiSecret, const std::string& proxyHostname,
-             const unsigned int proxyPort)
+Rest::Rest(const std::string &hostname, const unsigned int port,
+           const std::string &caPath, const std::string &apiKey,
+           const std::string &apiSecret, const std::string &proxyHostname,
+           const unsigned int proxyPort)
     : hostname_(hostname),
       port_(port),
       apiKey_(apiKey),
@@ -45,7 +45,7 @@ Agent::Agent(const std::string& hostname, const unsigned int port,
   //           << std::endl;
 }
 
-Agent::~Agent() {
+Rest::~Rest() {
   // Cleanup OpenSSL resources.
   SSL_shutdown(ssl_);
   SSL_free(ssl_);
@@ -54,18 +54,18 @@ Agent::~Agent() {
   cleanupOpenssl();
 }
 
-std::string Agent::executeRequest(
-    const std::string& url, const std::string& httpMethod,
-    const std::unordered_map<std::string, std::string>& headers) {
+std::string Rest::executeRequest(
+    const std::string &url, const std::string &httpMethod,
+    const std::unordered_map<std::string, std::string> &headers) {
   std::ostringstream oss;
 
   // Perpare HTTPS request message.
   oss << httpMethod << " " << url << " HTTP/1.1\r\n";
   oss << "Host: " << hostname_ << "\r\n";
-  for (const auto& header : headers) {
+  for (const auto &header : headers) {
     oss << header.first << ":" << header.second << "\r\n";
   }
-  oss << "User-Agent: OpenSSL/1.1.1\r\nConnection: close\r\n\r\n";
+  oss << "User-Rest: OpenSSL/1.1.1\r\nConnection: close\r\n\r\n";
 
   // Send HTTPS request.
   std::string message = oss.str();
@@ -92,8 +92,8 @@ std::string Agent::executeRequest(
   return response;
 }
 
-std::string Agent::joinParams(
-    const std::unordered_map<std::string, std::string>& params) {
+std::string Rest::joinParams(
+    const std::unordered_map<std::string, std::string> &params) {
   std::string query;
   for (auto it = params.cbegin(); it != params.cend(); ++it) {
     if (it != params.cbegin()) {
@@ -104,9 +104,9 @@ std::string Agent::joinParams(
   return query;
 }
 
-std::string Agent::sendPublicRequest(
-    std::string url, const std::string& httpMethod,
-    const std::unordered_map<std::string, std::string>& params) {
+std::string Rest::sendPublicRequest(
+    std::string url, const std::string &httpMethod,
+    const std::unordered_map<std::string, std::string> &params) {
   std::ostringstream oss;
 
   // Append params to url.
@@ -117,9 +117,9 @@ std::string Agent::sendPublicRequest(
   return executeRequest(url, httpMethod);
 }
 
-std::string Agent::sendSignedRequest(
-    std::string url, const std::string& httpMethod,
-    const std::unordered_map<std::string, std::string>& params) {
+std::string Rest::sendSignedRequest(
+    std::string url, const std::string &httpMethod,
+    const std::unordered_map<std::string, std::string> &params) {
   // Append the parameters to the url.
   // Note that the url here does not contain host IP, but pure path.
   url += "?";

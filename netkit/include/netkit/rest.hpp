@@ -13,43 +13,43 @@
 namespace netkit {
 
 // * An agent perform HTTPS requests.
-class Agent {
+class Rest {
   const std::string hostname_;
   const unsigned int port_;
   const std::string proxyHostname_;
   const unsigned int proxyPort_;
   int sockFd_;
-  SSL_CTX* ctx_;
-  SSL* ssl_;
+  SSL_CTX *ctx_;
+  SSL *ssl_;
   const std::string apiKey_;
   const std::string apiSecret_;
 
  private:
   std::string joinParams(
-      const std::unordered_map<std::string, std::string>& params);
+      const std::unordered_map<std::string, std::string> &params);
   std::string executeRequest(
-      const std::string& url, const std::string& httpMethod,
-      const std::unordered_map<std::string, std::string>& headers = {});
+      const std::string &url, const std::string &httpMethod,
+      const std::unordered_map<std::string, std::string> &headers = {});
 
  public:
-  Agent(const std::string& hostname, const unsigned int port,
-        const std::string& caPath, const std::string& apiKey,
-        const std::string& apiSecret, const std::string& proxyHostname = "",
-        const unsigned int proxyPort = 0);
-  Agent(const Agent&) = delete;
-  Agent& operator=(const Agent&) = delete;
-  Agent(Agent&&) = delete;
-  Agent& operator=(Agent&&) = delete;
-  ~Agent();
+  Rest(const std::string &hostname, const unsigned int port,
+       const std::string &caPath, const std::string &apiKey,
+       const std::string &apiSecret, const std::string &proxyHostname = "",
+       const unsigned int proxyPort = 0);
+  Rest(const Rest &) = delete;
+  Rest &operator=(const Rest &) = delete;
+  Rest(Rest &&) = delete;
+  Rest &operator=(Rest &&) = delete;
+  ~Rest();
 
   std::string sendPublicRequest(
-      std::string url, const std::string& httpMethod,
-      const std::unordered_map<std::string, std::string>& params = {});
+      std::string url, const std::string &httpMethod,
+      const std::unordered_map<std::string, std::string> &params = {});
   std::string sendSignedRequest(
-      std::string url, const std::string& httpMethod,
-      const std::unordered_map<std::string, std::string>& params = {});
+      std::string url, const std::string &httpMethod,
+      const std::unordered_map<std::string, std::string> &params = {});
 
-};  // Agent
+};  // Rest
 
 }  // namespace netkit
 
