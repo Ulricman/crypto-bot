@@ -104,7 +104,7 @@ void Websocket::sendWebsocketFrame(Frame frame) {
 
   unsigned char buffer[bufferSize];
 
-  buffer[0] = (frame.fin << 3) | frame.opcode;
+  buffer[0] = (frame.fin << 7) | frame.opcode;
   if (payloadLen < 126) {
     buffer[1] = (payloadLen & 0x7F) | (frame.masked << 7);
   } else if (payloadLen < 0x8000) {
@@ -164,12 +164,12 @@ void Websocket::streamLoop() {
                   .count() %
               1000;
     std::cout << "." << std::setw(3) << std::setfill('0') << ms << std::endl;
-    std::cout << "\033[31mFrame size: " << bytes << "\033[0m\n";
+    std::cout << "Frame size: " << bytes << "\n";
 
     // Parse websocket frame.
     Frame frame = parseWebsocketFrame(buffer, bytes);
     if (frame.opcode == Opcode::PING_FRAME) {
-      std::cout << "\033[31mPing Frame\033[0m\n";
+      std::cout << "Ping Frame\n";
       std::thread(&Websocket::pong, this, frame).detach();
     }
     if (!frame.payload.empty()) {
@@ -219,7 +219,35 @@ void Websocket::subscribe(const std::vector<std::string>& streams) {
     throw std::runtime_error("Websocket handshake failed");
   }
 
-  std::thread(&Websocket::streamLoop, this).join();
+  std::thread(&Websocket::streamLoop, this).detach();
+}
+
+void Websocket::unsubscribe(const std::string& stream) {
+  nlohmann::json request;
+  request["method"] = "UNSUBSCRIBE";
+  request["params"] = {stream};
+  request["id"] = 312;
+
+  Frame frame;
+  frame.fin = true;
+  frame.masked = true;
+  frame.opcode = Opcode::TEXT_FRAME;
+  frame.payload = request.dump();
+  std::cout << request.dump() << std::endl;
+  sendWebsocketFrame(frame);
+}
+
+void Websocket::listSubscriptions() {
+  nlohmann::json request;
+  request["method"] = "LIST_SUBSCRIPTIONS";
+  request["id"] = 3;
+
+  Frame frame;
+  frame.fin = true;
+  frame.masked = true;
+  frame.opcode = Opcode::TEXT_FRAME;
+  frame.payload = request.dump();
+  sendWebsocketFrame(frame);
 }
 
 }  // namespace netkit

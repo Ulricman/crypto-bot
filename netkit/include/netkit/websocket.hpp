@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iomanip>
 #include <new>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
 #include <vector>
@@ -62,6 +63,8 @@ class Websocket {
 
   void subscribe(const std::string& stream);
   void subscribe(const std::vector<std::string>& streams);
+  void unsubscribe(const std::string& stream);
+  void listSubscriptions();
 };  // Websocket
 
 }  // namespace netkit
