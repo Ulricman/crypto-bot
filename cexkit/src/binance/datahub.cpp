@@ -6,17 +6,23 @@ namespace binance {
 
 DataHub::DataHub(const std::string &hostname, const unsigned int port,
                  const std::string &caPath, const std::string &apiKey,
-                 const std::string &apiSecret, const std::string &proxyHostname,
-                 const unsigned int proxyPort)
+                 const std::string &apiSecret, const std::string &endpoint,
+                 const std::string &proxyHostname, const unsigned int proxyPort)
     : hostname_(hostname),
       port_(port),
+      endpoint_(endpoint),
       proxyHostname_(proxyHostname),
       proxyPort_(proxyPort),
       apiKey_(apiKey),
       apiSecret_(apiSecret),
       rest_(hostname, port, caPath, apiKey, apiSecret, proxyHostname,
             proxyPort),
-      ws_(hostname, port, caPath, apiKey, apiSecret, proxyHostname, proxyPort) {
+      ws_(hostname, port, caPath, apiKey, apiSecret, endpoint, proxyHostname,
+          proxyPort) {
+  if (endpoint_.empty()) {
+    throw std::runtime_error(
+        "Must pass a valid endpoint to establish websocket connection");
+  }
 }
 
 void DataHub::subscribe(const std::string &stream) {

@@ -25,14 +25,15 @@ int main() {
   const std::string hostname = "stream.binance.com";
   const int port = 9443;
 
+  const std::string endpoint = "/stream";
   cexkit::binance::DataHub datahub(hostname, port, caPath, apiKey, secretKey,
-                                   proxyHostname, proxyPort);
+                                   endpoint, proxyHostname, proxyPort);
+  std::cout << "ws connected\n";
+  std::this_thread::sleep_for(std::chrono::seconds(5));
   datahub.subscribe("solusdt@depth@100ms");
-  std::this_thread::sleep_for(std::chrono::seconds(300));
+  std::this_thread::sleep_for(std::chrono::seconds(5));
   datahub.unsubscribe("solusdt@depth@100ms");
-
-  for (int i = 0; i < 10; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    datahub.listSubscriptopns();
-  }
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  datahub.subscribe("btcusdt@depth@100ms");
+  std::this_thread::sleep_for(std::chrono::seconds(200));
 }
