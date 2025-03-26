@@ -53,6 +53,36 @@ void DataHub::unsubscribe(const std::vector<std::string> &streams) {
 
 void DataHub::listSubscriptopns() { ws_.listSubscriptions(); }
 
+void DataHub::updateOBByEvent(netkit::Frame frame) {
+  nlohmann::json payload = nlohmann::json::parse(frame.payload);
+  OrderBook &orderbook = orderbooks_[payload["stream"]];
+  uint64_t firstUpdateId = payload["data"]["U"];
+  uint64_t finalUpdateId = payload["data"]["u"];
+
+  // Assume both price and qty have 8 decimal places.
+  for (std::vector<std::string> bid : payload["data"]["b"]) {
+    bid[0].erase(bid[0].size() - 9, 1);
+    bid[1].erase(bid[1].size() - 9, 1);
+    uint64_t price = static_cast<uint64_t>(std::stoull(bid[0]));
+    uint64_t qty = static_cast<uint64_t>(std::stoull(bid[1]));
+    std::cout << "Update: " << payload["stream"] << " | bid: " << price << " , "
+              << qty << std::endl;
+
+    orderbook.update(price, qty, firstUpdateId, finalUpdateId, true);
+  }
+
+  for (std::vector<std::string> ask : payload["data"]["a"]) {
+    ask[0].erase(ask[0].size() - 9, 1);
+    ask[1].erase(ask[1].size() - 9, 1);
+    uint64_t price = static_cast<uint64_t>(std::stoull(ask[0]));
+    uint64_t qty = static_cast<uint64_t>(std::stoull(ask[1]));
+    std::cout << "Update: " << payload["stream"] << " | ask: " << price << " , "
+              << qty << std::endl;
+
+    orderbook.update(price, qty, firstUpdateId, finalUpdateId, false);
+  }
+}
+
 void DataHub::registerCallback(const std::string &stream,
                                const std::function<void(netkit::Frame)> &cb) {
   ws_.registerCallback(stream, cb);

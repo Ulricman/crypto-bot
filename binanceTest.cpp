@@ -34,18 +34,19 @@ int main() {
   cexkit::binance::DataHub datahub(hostname, port, caPath, apiKey, secretKey,
                                    endpoint, proxyHostname, proxyPort);
   std::cout << "ws connected\n";
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  std::this_thread::sleep_for(std::chrono::seconds(2));
 
-  datahub.subscribe("solusdt@depth@100ms");
-  datahub.registerCallback("solusdt@depth@100ms", depthCB);
-  datahub.subscribe("ethusdt@depth@100ms");
-  datahub.registerCallback("ethusdt@depth@100ms", depthCB);
+  // datahub.subscribe("solusdt@depth@100ms");
+  // datahub.registerCallback("solusdt@depth@100ms", depthCB);
+  // datahub.subscribe("ethusdt@depth@100ms");
+  // datahub.registerCallback("ethusdt@depth@100ms", depthCB);
 
-  std::this_thread::sleep_for(std::chrono::seconds(10));
-  datahub.unsubscribe("solusdt@depth@100ms");
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // std::this_thread::sleep_for(std::chrono::seconds(10));
+  // datahub.unsubscribe("solusdt@depth@100ms");
+  // std::this_thread::sleep_for(std::chrono::seconds(5));
 
-  datahub.subscribe("btcusdt@depth@100ms");
-  datahub.registerCallback("btcusdt@depth@100ms", depthCB);
+  // datahub.subscribe("btcusdt@depth@100ms");
+  // datahub.registerCallback("btcusdt@depth@100ms", depthCB);
+  datahub.localOrderBook("solusdt");
   std::this_thread::sleep_for(std::chrono::seconds(200));
 }

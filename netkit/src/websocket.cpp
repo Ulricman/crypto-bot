@@ -180,7 +180,7 @@ void Websocket::streamLoop() {
       if (payload.contains("stream")) {
         std::string stream = payload["stream"];
         if (callbacks_.contains(stream)) {
-          std::invoke(callbacks_[stream], frame);
+          callbacks_[stream](frame);
         }
       }
     }

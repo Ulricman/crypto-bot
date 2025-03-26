@@ -32,6 +32,15 @@ class DataHub {
   std::set<std::string> streams_;  // Subscribed streams.
   std::map<std::string, OrderBook> orderbooks_;
 
+ private:
+  /**
+   * * Callback updating local orderbook through event received from Diff.Depth
+   * * Stream. This callback assumes the OrderBook object has been instantiated.
+   * * And the caller needs to make sure the payload of passed frame contains
+   * * the "stream" field.
+   */
+  void updateOBByEvent(netkit::Frame frame);
+
  public:
   DataHub(const std::string &hostname, const unsigned int port,
           const std::string &caPath, const std::string &apiKey,
@@ -48,6 +57,18 @@ class DataHub {
   void unsubscribe(const std::vector<std::string> &streams);
 
   void listSubscriptopns();
+
+  void localOrderBook(const std::string &symbol) {
+    if (orderbooks_.contains(symbol)) {
+      throw std::runtime_error(std::string("Local OrderBook of ") + symbol +
+                               std::string(" has already been maintained"));
+    }
+    orderbooks_[symbol];
+    std::string stream = symbol + "@depth@100ms";
+    subscribe(stream);
+    registerCallback(stream,
+                     [this](netkit::Frame frame) { updateOBByEvent(frame); });
+  }
 
   // Set the maximum number of streams one websocket can listen.
   void setMaxNumStreams(int val) { maxNumStreams_ = val; }
