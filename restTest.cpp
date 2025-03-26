@@ -45,14 +45,14 @@ int main() {
   const int proxyPort = config["proxy_port"];
 
   // Main parts.
-  netkit::Agent agent(hostname, port, caPath.data(), apiKey, secretKey,
-                      proxyHostname, proxyPort);
+  netkit::Rest rest(hostname, port, caPath.data(), apiKey, secretKey,
+                    proxyHostname, proxyPort);
 
   // std::cout << agent.sendPublicRequest("/api/v3/depth", {{"symbol",
   // "SOLUSDT"}})
   //           << std::endl;
-  std::cout << agent.sendSignedRequest("/api/v3/account", "GET",
-                                       {{"omitZeroBalances", "true"}})
+  std::cout << rest.sendSignedRequest("/api/v3/account", "GET",
+                                      {{"omitZeroBalances", "true"}})
             << std::endl;
   // std::cout << agent.sendPublicRequest("/api/v3/ticker/bookTicker", "GET",
   //                                      {{"symbol", "BTCUSDT"}})

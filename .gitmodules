@@ -2,10 +2,6 @@
 	path = json
 	url = https://github.com/nlohmann/json.git
 	branch = master
-[submodule "curl"]
-	path = curl
-	url = https://github.com/curl/curl.git
-	branch = master
 [submodule "Nanolog"]
 	path = Nanolog
 	url = https://github.com/PlatformLab/NanoLog.git
