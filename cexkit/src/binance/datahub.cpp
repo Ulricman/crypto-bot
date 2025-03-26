@@ -26,16 +26,28 @@ DataHub::DataHub(const std::string &hostname, const unsigned int port,
 }
 
 void DataHub::subscribe(const std::string &stream) {
-  streams.insert(stream);
+  streams_.insert(stream);
   ws_.subscribe(stream);
 }
 
+void DataHub::subscribe(const std::vector<std::string> &streams) {
+  for (const auto &stream : streams) {
+    subscribe(stream);
+  }
+}
+
 void DataHub::unsubscribe(const std::string &stream) {
-  if (streams.contains(stream)) {
-    streams.erase(stream);
+  if (streams_.contains(stream)) {
+    streams_.erase(stream);
     ws_.unsubscribe(stream);
   } else {
     std::cerr << "Stream " << stream << " was not subscribed before\n";
+  }
+}
+
+void DataHub::unsubscribe(const std::vector<std::string> &streams) {
+  for (const auto &stream : streams) {
+    unsubscribe(stream);
   }
 }
 

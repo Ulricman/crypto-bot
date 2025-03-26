@@ -239,10 +239,10 @@ void Websocket::subscribe(const std::vector<std::string>& streams) {
   sendWebsocketFrame(frame);
 }
 
-void Websocket::unsubscribe(const std::string& stream) {
+void Websocket::unsubscribe(const std::vector<std::string>& streams) {
   nlohmann::json request;
   request["method"] = "UNSUBSCRIBE";
-  request["params"] = {stream};
+  request["params"] = streams;
   request["id"] = 312;
 
   Frame frame;
@@ -252,6 +252,10 @@ void Websocket::unsubscribe(const std::string& stream) {
   frame.payload = request.dump();
   std::cout << request.dump() << std::endl;
   sendWebsocketFrame(frame);
+}
+
+void Websocket::unsubscribe(const std::string& stream) {
+  unsubscribe(std::vector<std::string>{stream});
 }
 
 void Websocket::listSubscriptions() {
@@ -266,5 +270,7 @@ void Websocket::listSubscriptions() {
   frame.payload = request.dump();
   sendWebsocketFrame(frame);
 }
+
+int Websocket::numStreams() const { return streams_.size(); }
 
 }  // namespace netkit

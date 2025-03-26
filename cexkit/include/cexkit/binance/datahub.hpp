@@ -24,11 +24,13 @@ class DataHub {
   const std::string apiKey_;
   const std::string apiSecret_;
 
+  int maxNumStreams_ = 10;
+
   netkit::Rest rest_;
   netkit::Websocket ws_;
 
-  std::set<std::string> streams;  // Subscribed streams.
-  std::map<std::string, OrderBook> orderbooks;
+  std::set<std::string> streams_;  // Subscribed streams.
+  std::map<std::string, OrderBook> orderbooks_;
 
  public:
   DataHub(const std::string &hostname, const unsigned int port,
@@ -37,13 +39,18 @@ class DataHub {
           const std::string &proxyHostname = "",
           const unsigned int proxyPort = 0);
 
-  // Subscribe a stream through websocket.
+  // Subscribe a stream (streams) through websocket.
   void subscribe(const std::string &stream);
+  void subscribe(const std::vector<std::string> &streams);
 
-  // Unsubscribe a stream on websocket.
+  // Unsubscribe a stream (streams) on websocket.
   void unsubscribe(const std::string &stream);
+  void unsubscribe(const std::vector<std::string> &streams);
 
   void listSubscriptopns();
+
+  // Set the maximum number of streams one websocket can listen.
+  void setMaxNumStreams(int val) { maxNumStreams_ = val; }
 };  // DataHub
 
 }  // namespace binance

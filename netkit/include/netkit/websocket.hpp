@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <new>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -47,6 +48,8 @@ class Websocket {
   const std::string apiKey_;
   const std::string apiSecret_;
 
+  std::set<std::string> streams_;
+
  private:
   Frame parseWebsocketFrame(const char* buffer, size_t len);
   void sendWebsocketFrame(Frame frame);
@@ -73,7 +76,11 @@ class Websocket {
   void subscribe(const std::string& stream);
   void subscribe(const std::vector<std::string>& streams);
   void unsubscribe(const std::string& stream);
+  void unsubscribe(const std::vector<std::string>& streams);
   void listSubscriptions();
+
+  // * returns the number of streams managed by this websocket.
+  int numStreams() const;
 };  // Websocket
 
 }  // namespace netkit
