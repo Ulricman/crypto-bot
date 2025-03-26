@@ -8,6 +8,11 @@
 
 using json = nlohmann::json;
 
+void depthCB(netkit::Frame frame) {
+  nlohmann::json payload = nlohmann::json::parse(frame.payload);
+  std::cout << "CB[" << payload["stream"] << "]\n";
+}
+
 int main() {
   // Read configs.
   const char* configPath = "/home/jeffrey/crypto-bot/config.json";
@@ -30,10 +35,17 @@ int main() {
                                    endpoint, proxyHostname, proxyPort);
   std::cout << "ws connected\n";
   std::this_thread::sleep_for(std::chrono::seconds(5));
+
   datahub.subscribe("solusdt@depth@100ms");
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  datahub.registerCallback("solusdt@depth@100ms", depthCB);
+  datahub.subscribe("ethusdt@depth@100ms");
+  datahub.registerCallback("ethusdt@depth@100ms", depthCB);
+
+  std::this_thread::sleep_for(std::chrono::seconds(10));
   datahub.unsubscribe("solusdt@depth@100ms");
   std::this_thread::sleep_for(std::chrono::seconds(5));
+
   datahub.subscribe("btcusdt@depth@100ms");
+  datahub.registerCallback("btcusdt@depth@100ms", depthCB);
   std::this_thread::sleep_for(std::chrono::seconds(200));
 }

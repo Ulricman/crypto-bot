@@ -173,7 +173,16 @@ void Websocket::streamLoop() {
       std::thread(&Websocket::pong, this, frame).detach();
     }
     if (!frame.payload.empty()) {
-      std::cout << frame.payload << std::endl;
+      // std::cout << frame.payload << std::endl;
+
+      // Parse frame and call callback function if registered.
+      nlohmann::json payload = nlohmann::json::parse(frame.payload);
+      if (payload.contains("stream")) {
+        std::string stream = payload["stream"];
+        if (callbacks_.contains(stream)) {
+          std::invoke(callbacks_[stream], frame);
+        }
+      }
     }
   }
 }
@@ -272,5 +281,14 @@ void Websocket::listSubscriptions() {
 }
 
 int Websocket::numStreams() const { return streams_.size(); }
+
+void Websocket::registerCallback(const std::string& stream,
+                                 const std::function<void(Frame)>& cb) {
+  if (!cb) {
+    throw std::runtime_error(
+        std::string("Registering an invalid callback for stream ") + stream);
+  }
+  callbacks_[stream] = cb;
+}
 
 }  // namespace netkit

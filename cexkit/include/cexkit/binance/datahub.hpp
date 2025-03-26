@@ -51,6 +51,9 @@ class DataHub {
 
   // Set the maximum number of streams one websocket can listen.
   void setMaxNumStreams(int val) { maxNumStreams_ = val; }
+
+  void registerCallback(const std::string &stream,
+                        const std::function<void(netkit::Frame)> &);
 };  // DataHub
 
 }  // namespace binance

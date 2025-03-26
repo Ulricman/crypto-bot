@@ -8,7 +8,9 @@
 
 #include <ctime>
 #include <fstream>
+#include <functional>
 #include <iomanip>
+#include <map>
 #include <new>
 #include <nlohmann/json.hpp>
 #include <set>
@@ -49,6 +51,7 @@ class Websocket {
   const std::string apiSecret_;
 
   std::set<std::string> streams_;
+  std::map<std::string, std::function<void(Frame)>> callbacks_;
 
  private:
   Frame parseWebsocketFrame(const char* buffer, size_t len);
@@ -81,6 +84,10 @@ class Websocket {
 
   // * returns the number of streams managed by this websocket.
   int numStreams() const;
+
+  // * Register a callback for a specific stream.
+  void registerCallback(const std::string& stream,
+                        const std::function<void(Frame)>&);
 };  // Websocket
 
 }  // namespace netkit

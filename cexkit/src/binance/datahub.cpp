@@ -53,6 +53,11 @@ void DataHub::unsubscribe(const std::vector<std::string> &streams) {
 
 void DataHub::listSubscriptopns() { ws_.listSubscriptions(); }
 
+void DataHub::registerCallback(const std::string &stream,
+                               const std::function<void(netkit::Frame)> &cb) {
+  ws_.registerCallback(stream, cb);
+}
+
 }  // namespace binance
 
 }  // namespace cexkit
