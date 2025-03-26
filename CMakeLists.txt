@@ -13,11 +13,11 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/json")
 add_subdirectory("${CMAKE_SOURCE_DIR}/curl")
 
 set(netkitIncludeDir ${CMAKE_SOURCE_DIR}/netkit/include)
-set(cexkitIncludeDir ${CMAKE_SOURCE_DIR}/cexKit/include)
+set(cexkitIncludeDir ${CMAKE_SOURCE_DIR}/cexkit/include)
 include_directories(${netkitIncludeDir} ${cexkitIncludeDir})
 file(GLOB Sources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/*.cpp)
 file(GLOB netkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/netkit/src/*.cpp)
-file(GLOB cexkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/cexKit/src/*.cpp)
+file(GLOB_RECURSE cexkitSources CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/cexkit/src/*.cpp)
 
 foreach(Source ${Sources})
     get_filename_component(Exec ${Source} NAME_WE)
