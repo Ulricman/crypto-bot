@@ -21,7 +21,7 @@
 
 using json = nlohmann::json;
 
-void readConfig(const char* configPath) {
+void readConfig(const char *configPath) {
   std::ifstream file(configPath);
   json config;
   file >> config;
@@ -29,7 +29,7 @@ void readConfig(const char* configPath) {
 
 int main() {
   // Read configs.
-  const char* configPath = "/home/jeffrey/crypto-bot/config.json";
+  const char *configPath = "/home/jeffrey/crypto-bot/config.json";
   std::ifstream file(configPath);
   json config;
   file >> config;
