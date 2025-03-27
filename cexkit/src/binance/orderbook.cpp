@@ -3,7 +3,8 @@
 namespace cexkit {
 namespace binance {
 
-OrderBook::OrderBook() : lastUpdateId_(0) {}
+OrderBook::OrderBook(uint64_t eventBufferSize)
+    : lastUpdateId_(0), events_(eventBufferSize) {}
 
 void OrderBook::update(std::map<price_t, qty_t>&& bidOrders,
                        std::map<price_t, qty_t>&& askOrders,
@@ -49,5 +50,16 @@ void OrderBook::update(price_t price, qty_t qty, uint64_t firstUpdateId,
   lastUpdateId_.store(finalUpdateId, std::memory_order_release);
 }
 
+void OrderBook::pushEvent(const std::string& event) {
+  std::cout << "New Event[ref]: " << event << std::endl;
+  events_.pushBlock(event);
+}
+
+void OrderBook::pushEvent(std::string&& event) {
+  std::cout << "New Event[move]: " << event << std::endl;
+  events_.pushBlock(std::move(event));
+}
+
 }  // namespace binance
+
 }  // namespace cexkit

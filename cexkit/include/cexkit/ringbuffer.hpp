@@ -18,8 +18,9 @@ class RingBuffer {
   uint64_t capacity_;
 
  public:
-  RingBuffer(uint64_t capacity) : capacity_(capacity), head_(0), tail_(0) {
-    data_ = ::operator new(sizeof(T) * capacity_);
+  explicit RingBuffer(uint64_t capacity)
+      : capacity_(capacity), head_(0), tail_(0) {
+    data_ = reinterpret_cast<T*>(::operator new(sizeof(T) * capacity_));
   }
   ~RingBuffer() { ::operator delete(data_); }
 

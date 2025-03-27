@@ -25,12 +25,13 @@ class DataHub {
   const std::string apiSecret_;
 
   int maxNumStreams_ = 10;
+  uint64_t eventBufferSize_ = 100;
 
   netkit::Rest rest_;
   netkit::Websocket ws_;
 
   std::set<std::string> streams_;  // Subscribed streams.
-  std::map<std::string, OrderBook> orderbooks_;
+  std::map<std::string, OrderBook *> orderbooks_;
 
  private:
   /**
@@ -63,7 +64,7 @@ class DataHub {
       throw std::runtime_error(std::string("Local OrderBook of ") + symbol +
                                std::string(" has already been maintained"));
     }
-    orderbooks_[symbol];
+    orderbooks_[symbol] = new OrderBook(eventBufferSize_);
     std::string stream = symbol + "@depth@100ms";
     subscribe(stream);
     registerCallback(stream,
