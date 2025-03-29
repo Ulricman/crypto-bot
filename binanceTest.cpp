@@ -46,5 +46,5 @@ int main() {
   // datahub.subscribe("btcusdt@depth@100ms");
   // datahub.registerCallback("btcusdt@depth@100ms", depthCB);
   datahub.subscribeOrderBook("solusdt");
-  std::this_thread::sleep_for(std::chrono::seconds(200));
+  datahub.join();
 }

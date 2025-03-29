@@ -13,7 +13,8 @@ Websocket::Websocket(const std::string& hostname, const unsigned int port,
       apiKey_(apiKey),
       apiSecret_(apiSecret),
       proxyHostname_(proxyHostname),
-      proxyPort_(proxyPort) {
+      proxyPort_(proxyPort),
+      streamLoop_(nullptr) {
   // Create socket or proxy tunnel if proxy is given.
   if (!proxyHostname.empty()) {
     sockFd_ = proxyTunnel(proxyHostname_, proxyPort_, hostname_, port_);
@@ -42,16 +43,26 @@ Websocket::Websocket(const std::string& hostname, const unsigned int port,
     throw std::runtime_error(std::string("SSL handshake failed"));
   }
   connect(endpoint_);
-  std::thread(&Websocket::streamLoop, this).detach();
+  streamLoop_ = new std::thread(&Websocket::streamLoop, this);
 }
 
 Websocket::~Websocket() {
+  if (streamLoop_ && streamLoop_->joinable()) {
+    streamLoop_->join();
+  }
+
   // Cleanup OpenSSL resources.
   SSL_shutdown(ssl_);
   SSL_free(ssl_);
   close(sockFd_);
   SSL_CTX_free(ctx_);
   cleanupOpenssl();
+}
+
+void Websocket::join() {
+  if (streamLoop_ && streamLoop_->joinable()) {
+    streamLoop_->join();
+  }
 }
 
 Frame Websocket::parseWebsocketFrame(const char* buffer, size_t len) {

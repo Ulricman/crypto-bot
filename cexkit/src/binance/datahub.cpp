@@ -34,6 +34,8 @@ DataHub::~DataHub() {
   }
 }
 
+void DataHub::join() { ws_.join(); }
+
 void DataHub::subscribe(const std::string &stream) {
   streams_.insert(stream);
   ws_.subscribe(stream);

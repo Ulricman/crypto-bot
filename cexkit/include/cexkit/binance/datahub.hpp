@@ -54,6 +54,8 @@ class DataHub {
           const unsigned int proxyPort = 0);
   ~DataHub();
 
+  void join();
+
   // Subscribe a stream (streams) through websocket.
   void subscribe(const std::string &stream);
   void subscribe(const std::vector<std::string> &streams);

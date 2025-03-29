@@ -84,6 +84,8 @@ class Websocket {
   std::set<std::string> streams_;
   std::map<std::string, std::function<void(Frame)>> callbacks_;
 
+  std::thread* streamLoop_;
+
  private:
   Frame parseWebsocketFrame(const char* buffer, size_t len);
   void sendWebsocketFrame(Frame frame);
@@ -107,6 +109,7 @@ class Websocket {
             const unsigned int proxyPort = 0);
   ~Websocket();
 
+  void join();
   void subscribe(const std::string& stream);
   void subscribe(const std::vector<std::string>& streams);
   void unsubscribe(const std::string& stream);
