@@ -94,7 +94,7 @@ class Websocket {
    * * Establish a websocket connection to a specific endpoint, which
    * * needs to be called before any subscription or other requests.
    */
-  bool connect(const std::string& endpoint);
+  bool connectEndpoint(const std::string& endpoint);
 
   void streamLoop();
 
