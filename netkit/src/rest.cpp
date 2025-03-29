@@ -17,9 +17,24 @@ Rest::Rest(const std::string &hostname, const unsigned int port,
   if (!proxyHostname_.empty()) {
     sockFd_ = proxyTunnel(proxyHostname_, proxyPort_, hostname_, port_);
   } else {
+    // Resolve IP of the hostname.
+    std::string ip = resolveHostname(hostname);
+
+    struct sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(port);
+    inet_pton(AF_INET, ip.data(), &serverAddress.sin_addr);
+
     sockFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (sockFd_ < 0) {
       throw std::runtime_error(std::string("Failed creating socket: ") +
+                               std::strerror(errno));
+    }
+
+    if (connect(sockFd_, reinterpret_cast<struct sockaddr *>(&serverAddress),
+                sizeof(serverAddress)) < 0) {
+      close(sockFd_);
+      throw std::runtime_error(std::string("Failed connecting to proxy: ") +
                                std::strerror(errno));
     }
   }
