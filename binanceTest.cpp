@@ -22,17 +22,29 @@ int main() {
   const std::string proxyHostname = config["proxy_host"];
   const int proxyPort = config["proxy_port"];
 
-  const std::string hostname = "stream.binance.com";
-  const int port = 9443;
+  const std::string wsHostname = "stream.binance.com";
+  const int wsPort = 9443;
+  const std::string restHostname = "api.binance.com";
+  const int restPort = 443;
 
-  cexkit::binance::DataHub datahub(hostname, port, caPath, apiKey, secretKey,
+  const std::string endpoint = "/stream";
+  cexkit::binance::DataHub datahub(restHostname, restPort, wsHostname, wsPort,
+                                   caPath, apiKey, secretKey, endpoint,
                                    proxyHostname, proxyPort);
-  datahub.subscribe("solusdt@depth@100ms");
-  std::this_thread::sleep_for(std::chrono::seconds(300));
-  datahub.unsubscribe("solusdt@depth@100ms");
+  std::cout << "ws connected\n";
+  std::this_thread::sleep_for(std::chrono::seconds(2));
 
-  for (int i = 0; i < 10; ++i) {
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    datahub.listSubscriptopns();
-  }
+  // datahub.subscribe("solusdt@depth@100ms");
+  // datahub.registerCallback("solusdt@depth@100ms", depthCB);
+  // datahub.subscribe("ethusdt@depth@100ms");
+  // datahub.registerCallback("ethusdt@depth@100ms", depthCB);
+
+  // std::this_thread::sleep_for(std::chrono::seconds(10));
+  // datahub.unsubscribe("solusdt@depth@100ms");
+  // std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  // datahub.subscribe("btcusdt@depth@100ms");
+  // datahub.registerCallback("btcusdt@depth@100ms", depthCB);
+  datahub.subscribeOrderBook("solusdt");
+  std::this_thread::sleep_for(std::chrono::seconds(200));
 }

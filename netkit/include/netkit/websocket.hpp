@@ -8,9 +8,12 @@
 
 #include <ctime>
 #include <fstream>
+#include <functional>
 #include <iomanip>
+#include <map>
 #include <new>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -38,6 +41,7 @@ struct Frame {
 class Websocket {
   const std::string hostname_;
   const unsigned int port_;
+  const std::string endpoint_;
   const std::string proxyHostname_;
   const unsigned int proxyPort_;
   int sockFd_;
@@ -46,9 +50,19 @@ class Websocket {
   const std::string apiKey_;
   const std::string apiSecret_;
 
+  std::set<std::string> streams_;
+  std::map<std::string, std::function<void(Frame)>> callbacks_;
+
  private:
   Frame parseWebsocketFrame(const char* buffer, size_t len);
   void sendWebsocketFrame(Frame frame);
+
+  /**
+   * * Establish a websocket connection to a specific endpoint, which
+   * * needs to be called before any subscription or other requests.
+   */
+  bool connect(const std::string& endpoint);
+
   void streamLoop();
 
   // TODO: use move assignment operator.
@@ -57,14 +71,23 @@ class Websocket {
  public:
   Websocket(const std::string& hostname, const unsigned int port,
             const std::string& caPath, const std::string& apiKey,
-            const std::string& apiSecret, const std::string& proxyHostname = "",
+            const std::string& apiSecret, const std::string& endpoint_,
+            const std::string& proxyHostname = "",
             const unsigned int proxyPort = 0);
   ~Websocket();
 
   void subscribe(const std::string& stream);
   void subscribe(const std::vector<std::string>& streams);
   void unsubscribe(const std::string& stream);
+  void unsubscribe(const std::vector<std::string>& streams);
   void listSubscriptions();
+
+  // * returns the number of streams managed by this websocket.
+  int numStreams() const;
+
+  // * Register a callback for a specific stream.
+  void registerCallback(const std::string& stream,
+                        const std::function<void(Frame)>&);
 };  // Websocket
 
 }  // namespace netkit

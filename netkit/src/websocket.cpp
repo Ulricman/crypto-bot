@@ -4,11 +4,12 @@ namespace netkit {
 
 Websocket::Websocket(const std::string& hostname, const unsigned int port,
                      const std::string& caPath, const std::string& apiKey,
-                     const std::string& apiSecret,
+                     const std::string& apiSecret, const std::string& endpoint,
                      const std::string& proxyHostname,
                      const unsigned int proxyPort)
     : hostname_(hostname),
       port_(port),
+      endpoint_(endpoint),
       apiKey_(apiKey),
       apiSecret_(apiSecret),
       proxyHostname_(proxyHostname),
@@ -40,9 +41,8 @@ Websocket::Websocket(const std::string& hostname, const unsigned int port,
     close(sockFd_);
     throw std::runtime_error(std::string("SSL handshake failed"));
   }
-
-  // std::cout << "SSL connected using cipher: " << SSL_get_cipher(ssl_)
-  //           << std::endl;
+  connect(endpoint_);
+  std::thread(&Websocket::streamLoop, this).detach();
 }
 
 Websocket::~Websocket() {
@@ -173,9 +173,58 @@ void Websocket::streamLoop() {
       std::thread(&Websocket::pong, this, frame).detach();
     }
     if (!frame.payload.empty()) {
-      std::cout << frame.payload << std::endl;
+      // std::cout << frame.payload << std::endl;
+
+      // Parse frame and call callback function if registered.
+      nlohmann::json payload = nlohmann::json::parse(frame.payload);
+      if (payload.contains("stream")) {
+        std::string stream = payload["stream"];
+        if (callbacks_.contains(stream)) {
+          callbacks_[stream](frame);
+        }
+      }
     }
   }
+}
+
+bool Websocket::connect(const std::string& endpoint) {
+  std::string wsKey = "dGhlIHNhbXBsZSBub25jZQ==";
+
+  // Fill upgrade request message.
+  std::ostringstream oss;
+  oss << "GET " << endpoint << " HTTP/1.1\r\n";
+  oss << "Host: " << hostname_ << "\r\n";
+  oss << "Upgrade: websocket\r\n";
+  oss << "Connection: Upgrade\r\n";
+  oss << "Sec-WebSocket-Key: " << wsKey << "\r\n";
+  oss << "Sec-WebSocket-Version: 13\r\n\r\n";
+
+  // Send upgrade request to perform websocket handshake.
+  std::string upgradeRequest = oss.str();
+  if (SSL_write(ssl_, upgradeRequest.data(), upgradeRequest.size()) <= 0) {
+    std::cerr << "Failed sending upgrade request\n";
+    return false;
+  }
+
+  // Receive websocket handshake response.
+  char buffer[1 << 8];
+  int bytes = SSL_read(ssl_, buffer, sizeof(buffer) - 1);
+  if (bytes <= 0) {
+    std::cerr << "Failed receving websocket handshake response\n";
+    return false;
+  }
+  buffer[bytes] = '\0';
+
+  std::string response(buffer, bytes);
+  std::cout << response << std::endl;
+
+  // If server refuses to upgrade, return false.
+  if (response.find("HTTP/1.1 101 Switching Protocols") == std::string::npos) {
+    std::cerr << "Websocket handshake failed\n";
+    return false;
+  }
+
+  return true;
 }
 
 void Websocket::subscribe(const std::string& stream) {
@@ -183,49 +232,26 @@ void Websocket::subscribe(const std::string& stream) {
 }
 
 void Websocket::subscribe(const std::vector<std::string>& streams) {
-  // Perform Websocket handshake.
-  std::string wsKey = "dGhlIHNhbXBsZSBub25jZQ==";
+  nlohmann::json request;
+  request["method"] = "SUBSCRIBE";
+  request["params"] = streams;
+  request["id"] = 1;
 
-  std::ostringstream oss;
-  oss << "GET /stream?streams=";
-  for (auto it = streams.cbegin(); it != streams.cend(); ++it) {
-    if (it != streams.cbegin()) {
-      oss << "/";
-    }
-    oss << *it;
-  }
-  oss << " HTTP/1.1\r\n";
-  oss << "Host: " << hostname_ << "\r\n";
-  oss << "Upgrade: websocket\r\n";
-  oss << "Connection: Upgrade\r\n";
-  oss << "Sec-WebSocket-Key: " << wsKey << "\r\n";
-  oss << "Sec-WebSocket-Version: 13\r\n\r\n";
+  Frame frame;
+  frame.fin = true;
+  frame.masked = true;
+  frame.opcode = Opcode::TEXT_FRAME;
+  frame.payload = request.dump();
 
-  std::string upgradeRequest = oss.str();
-  if (SSL_write(ssl_, upgradeRequest.data(), upgradeRequest.size()) <= 0) {
-    throw std::runtime_error("Failed sending upgrade request");
-  }
+  std::cout << "subscribe: " << request.dump() << std::endl;
 
-  char buffer[1 << 16];
-  int bytes = SSL_read(ssl_, buffer, sizeof(buffer) - 1);
-  if (bytes <= 0) {
-    throw std::runtime_error("Failed receving websocket handshake response");
-  }
-  buffer[bytes] = '\0';
-
-  std::string response(buffer, bytes);
-  std::cout << response << std::endl;
-  if (response.find("HTTP/1.1 101 Switching Protocols") == std::string::npos) {
-    throw std::runtime_error("Websocket handshake failed");
-  }
-
-  std::thread(&Websocket::streamLoop, this).detach();
+  sendWebsocketFrame(frame);
 }
 
-void Websocket::unsubscribe(const std::string& stream) {
+void Websocket::unsubscribe(const std::vector<std::string>& streams) {
   nlohmann::json request;
   request["method"] = "UNSUBSCRIBE";
-  request["params"] = {stream};
+  request["params"] = streams;
   request["id"] = 312;
 
   Frame frame;
@@ -235,6 +261,10 @@ void Websocket::unsubscribe(const std::string& stream) {
   frame.payload = request.dump();
   std::cout << request.dump() << std::endl;
   sendWebsocketFrame(frame);
+}
+
+void Websocket::unsubscribe(const std::string& stream) {
+  unsubscribe(std::vector<std::string>{stream});
 }
 
 void Websocket::listSubscriptions() {
@@ -248,6 +278,17 @@ void Websocket::listSubscriptions() {
   frame.opcode = Opcode::TEXT_FRAME;
   frame.payload = request.dump();
   sendWebsocketFrame(frame);
+}
+
+int Websocket::numStreams() const { return streams_.size(); }
+
+void Websocket::registerCallback(const std::string& stream,
+                                 const std::function<void(Frame)>& cb) {
+  if (!cb) {
+    throw std::runtime_error(
+        std::string("Registering an invalid callback for stream ") + stream);
+  }
+  callbacks_[stream] = cb;
 }
 
 }  // namespace netkit

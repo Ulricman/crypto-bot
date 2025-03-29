@@ -18,8 +18,9 @@ class RingBuffer {
   uint64_t capacity_;
 
  public:
-  RingBuffer(uint64_t capacity) : capacity_(capacity), head_(0), tail_(0) {
-    data_ = ::operator new(sizeof(T) * capacity_);
+  explicit RingBuffer(uint64_t capacity)
+      : capacity_(capacity), head_(0), tail_(0) {
+    data_ = reinterpret_cast<T*>(::operator new(sizeof(T) * capacity_));
   }
   ~RingBuffer() { ::operator delete(data_); }
 
@@ -52,7 +53,7 @@ class RingBuffer {
 
   // * The caller needs to guarantee that the returned object would not
   // * be destructed (call pop()) during usage.
-  void frontBlock(T& entry) {
+  void frontBlock(T** entry) {
     uint64_t head = head_.load(std::memory_order_acquire);
 
     // Yield if buffer is empty.
@@ -60,17 +61,17 @@ class RingBuffer {
       std::this_thread::yield();
     }
 
-    entry = data_[head];
+    *entry = &data_[head];
   }
 
-  bool frontNonBlock(T& entry) {
+  bool frontNonBlock(T** entry) {
     uint64_t head = head_.load(std::memory_order_acquire);
 
     if (head == tail_.load(std::memory_order_acquire)) {
       return false;
     }
 
-    entry = data_[head];
+    *entry = &data_[head];
     return true;
   }
 
@@ -88,7 +89,7 @@ class RingBuffer {
 
     data_[head].~T();
 
-    head_.fetch_add(1, std::memory_order_release);
+    head_.store((head + 1) % capacity_, std::memory_order_release);
   }
 
   bool popNonBlock(bool nonEmpty = false) {
@@ -100,7 +101,14 @@ class RingBuffer {
 
     data_[head].~T();
 
-    head_.fetch_add(1, std::memory_order_release);
+    head_.store((head + 1) % capacity_, std::memory_order_release);
+    return true;
+  }
+
+  uint64_t size() const {
+    uint64_t tail = tail_.load(std::memory_order_acquire);
+    uint64_t head = head_.load(std::memory_order_acquire);
+    return ((tail + capacity_) - head) % capacity_;
   }
 
   bool empty() const {

@@ -24,9 +24,10 @@ int main() {
 
   const std::string hostname = "stream.binance.com";
   const int port = 9443;
+  const std::string endpoint = "/stream";
 
   netkit::Websocket websocket(hostname, port, caPath, apiKey, secretKey,
-                              proxyHostname, proxyPort);
+                              endpoint, proxyHostname, proxyPort);
 
   const std::string stream = "btcusdt@depth@100ms";
   // std::vector<std::string> streams{"btcusdt@depth", "ethusdt@depth"};
