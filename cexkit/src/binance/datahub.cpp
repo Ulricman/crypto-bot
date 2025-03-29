@@ -4,24 +4,33 @@ namespace cexkit {
 
 namespace binance {
 
-DataHub::DataHub(const std::string &hostname, const unsigned int port,
+DataHub::DataHub(const std::string &restHostname, const unsigned int restPort,
+                 const std::string &wsHostname, const unsigned int wsPort,
                  const std::string &caPath, const std::string &apiKey,
                  const std::string &apiSecret, const std::string &endpoint,
                  const std::string &proxyHostname, const unsigned int proxyPort)
-    : hostname_(hostname),
-      port_(port),
+    : restHostname_(restHostname),
+      restPort_(restPort),
+      wsHostname_(wsHostname),
+      wsPort_(wsPort),
       endpoint_(endpoint),
       proxyHostname_(proxyHostname),
       proxyPort_(proxyPort),
       apiKey_(apiKey),
       apiSecret_(apiSecret),
-      rest_(hostname, port, caPath, apiKey, apiSecret, proxyHostname,
+      rest_(restHostname, restPort, caPath, apiKey, apiSecret, proxyHostname,
             proxyPort),
-      ws_(hostname, port, caPath, apiKey, apiSecret, endpoint, proxyHostname,
-          proxyPort) {
+      ws_(wsHostname, wsPort, caPath, apiKey, apiSecret, endpoint,
+          proxyHostname, proxyPort) {
   if (endpoint_.empty()) {
     throw std::runtime_error(
         "Must pass a valid endpoint to establish websocket connection");
+  }
+}
+
+DataHub::~DataHub() {
+  for (const auto &orderbook : orderbooks_) {
+    delete orderbook.second;
   }
 }
 
@@ -51,39 +60,40 @@ void DataHub::unsubscribe(const std::vector<std::string> &streams) {
   }
 }
 
+void DataHub::subscribeOrderBook(const std::string &symbol) {
+  if (orderbooks_.contains(symbol)) {
+    throw std::runtime_error(std::string("Local OrderBook of ") + symbol +
+                             std::string(" has already been maintained"));
+  }
+  orderbooks_[symbol] = new OrderBook(eventBufferSize_);
+  std::string stream = symbol + "@depth@100ms";
+
+  // Subscribe websocket stream from exchange.
+  subscribe(stream);
+  registerCallback(stream,
+                   [this](netkit::Frame frame) { updateOBByEvent(frame); });
+
+  // Wait until orderbook has buffered some events, so that we can check
+  // the validity of snapshot.
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  // Fetch snapshot from exchange rest API.
+  while (true) {
+    std::string snapshot = rest_.sendPublicRequest(
+        "/api/v3/depth", "GET", {{"symbol", upper(symbol)}, {"limit", "10"}});
+    if (orderbooks_[symbol]->initDepth(std::move(snapshot))) {
+      break;
+    }
+  }
+}
+
+void DataHub::unsubscribeOrderBook(const std::string &symbol) {
+  std::string stream = symbol + "@depth@100ms";
+  unsubscribe(stream);
+  delete orderbooks_[symbol];
+}
+
 void DataHub::listSubscriptopns() { ws_.listSubscriptions(); }
-
-// void DataHub::updateOBByEvent(netkit::Frame frame) {
-//   nlohmann::json payload = nlohmann::json::parse(frame.payload);
-//   OrderBook &orderbook = orderbooks_[payload["stream"]];
-//   uint64_t firstUpdateId = payload["data"]["U"];
-//   uint64_t finalUpdateId = payload["data"]["u"];
-
-//   // Assume both price and qty have 8 decimal places.
-//   for (std::vector<std::string> bid : payload["data"]["b"]) {
-//     bid[0].erase(bid[0].size() - 9, 1);
-//     bid[1].erase(bid[1].size() - 9, 1);
-//     uint64_t price = static_cast<uint64_t>(std::stoull(bid[0]));
-//     uint64_t qty = static_cast<uint64_t>(std::stoull(bid[1]));
-//     std::cout << "Update: " << payload["stream"] << " | bid: " << price << "
-//     , "
-//               << qty << std::endl;
-
-//     orderbook.update(price, qty, firstUpdateId, finalUpdateId, true);
-//   }
-
-//   for (std::vector<std::string> ask : payload["data"]["a"]) {
-//     ask[0].erase(ask[0].size() - 9, 1);
-//     ask[1].erase(ask[1].size() - 9, 1);
-//     uint64_t price = static_cast<uint64_t>(std::stoull(ask[0]));
-//     uint64_t qty = static_cast<uint64_t>(std::stoull(ask[1]));
-//     std::cout << "Update: " << payload["stream"] << " | ask: " << price << "
-//     , "
-//               << qty << std::endl;
-
-//     orderbook.update(price, qty, firstUpdateId, finalUpdateId, false);
-//   }
-// }
 
 void DataHub::updateOBByEvent(netkit::Frame frame) {
   nlohmann::json payload = nlohmann::json::parse(frame.payload);
@@ -91,7 +101,7 @@ void DataHub::updateOBByEvent(netkit::Frame frame) {
   std::string symbol = stream.substr(0, stream.find_first_of("@"));
 
   OrderBook *orderbook = orderbooks_[symbol];
-  if (orderbook == nullptr) {
+  if (orderbook == nullptr) [[unlikely]] {
     std::cerr << "OrderBook for " << symbol << " does not exist\n";
   }
   orderbook->pushEvent(std::move(frame.payload));

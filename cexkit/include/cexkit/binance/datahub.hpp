@@ -7,6 +7,7 @@
 #include <string>
 
 #include "cexkit/binance/orderbook.hpp"
+#include "cexkit/utils.hpp"
 #include "netkit/rest.hpp"
 #include "netkit/websocket.hpp"
 
@@ -16,8 +17,10 @@ namespace binance {
 
 class DataHub {
  private:
-  const std::string hostname_;
-  const unsigned int port_;
+  const std::string restHostname_;
+  const unsigned int restPort_;
+  const std::string wsHostname_;
+  const unsigned int wsPort_;
   const std::string endpoint_;
   const std::string proxyHostname_;
   const unsigned int proxyPort_;
@@ -43,11 +46,13 @@ class DataHub {
   void updateOBByEvent(netkit::Frame frame);
 
  public:
-  DataHub(const std::string &hostname, const unsigned int port,
+  DataHub(const std::string &restHostname, const unsigned int restPort,
+          const std::string &wsHostname, const unsigned int wsPort,
           const std::string &caPath, const std::string &apiKey,
           const std::string &apiSecret, const std::string &endpoint,
           const std::string &proxyHostname = "",
           const unsigned int proxyPort = 0);
+  ~DataHub();
 
   // Subscribe a stream (streams) through websocket.
   void subscribe(const std::string &stream);
@@ -59,17 +64,9 @@ class DataHub {
 
   void listSubscriptopns();
 
-  void localOrderBook(const std::string &symbol) {
-    if (orderbooks_.contains(symbol)) {
-      throw std::runtime_error(std::string("Local OrderBook of ") + symbol +
-                               std::string(" has already been maintained"));
-    }
-    orderbooks_[symbol] = new OrderBook(eventBufferSize_);
-    std::string stream = symbol + "@depth@100ms";
-    subscribe(stream);
-    registerCallback(stream,
-                     [this](netkit::Frame frame) { updateOBByEvent(frame); });
-  }
+  void subscribeOrderBook(const std::string &symbol);
+
+  void unsubscribeOrderBook(const std::string &symbol);
 
   // Set the maximum number of streams one websocket can listen.
   void setMaxNumStreams(int val) { maxNumStreams_ = val; }

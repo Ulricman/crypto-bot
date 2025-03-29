@@ -8,6 +8,7 @@
 
 #include "cexkit/cexdef.hpp"
 #include "cexkit/ringbuffer.hpp"
+#include "nlohmann/json.hpp"
 
 namespace cexkit {
 
@@ -18,22 +19,28 @@ class OrderBook {
   std::map<price_t, qty_t> bidOrders_, askOrders_;
   RingBuffer<std::string> events_;
 
+ private:
+  //* This function is called to update orderbook from events in the buffer.
+  void update();
+
  public:
   explicit OrderBook(uint64_t eventBufferSize);
+
+  bool initDepth(std::string&& payload);
 
   /**
    * * This function should be called to update the orderbook according
    * * to the snapshot received from Partial Book Depth Stream.
    */
-  void update(std::map<price_t, qty_t>&& bidOrders,
-              std::map<price_t, qty_t>&& askOrders, uint64_t lastUpdateId);
+  // void update(std::map<price_t, qty_t>&& bidOrders,
+  //             std::map<price_t, qty_t>&& askOrders, uint64_t lastUpdateId);
 
   /**
    * * This function should be called to update the orderbook according
    * * to the event received from Diff.Depth Stream.
    */
-  void update(price_t price, qty_t qty, uint64_t firstUpdateId,
-              uint64_t finalUpdateId, bool isBid);
+  // void update(price_t price, qty_t qty, uint64_t firstUpdateId,
+  //             uint64_t finalUpdateId, bool isBid);
 
   void pushEvent(const std::string& event);
   void pushEvent(std::string&& event);
