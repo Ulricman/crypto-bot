@@ -28,11 +28,13 @@ int main() {
   const int restPort = 443;
 
   const std::string endpoint = "/stream";
-  cexkit::binance::DataHub datahub(restHostname, restPort, wsHostname, wsPort,
-                                   caPath, apiKey, secretKey, endpoint,
-                                   proxyHostname, proxyPort);
-  std::cout << "ws connected\n";
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  netkit::Rest rest(restHostname, restPort, caPath, apiKey, secretKey,
+                    proxyHostname, proxyPort);
+  netkit::Websocket ws(wsHostname, wsPort, caPath, apiKey, secretKey, endpoint,
+                       proxyHostname, proxyPort);
+  cexkit::binance::DataHub datahub(&rest, &ws);
+  std::cout << "datahub setup done!\n";
+  // std::this_thread::sleep_for(std::chrono::seconds(2));
 
   // datahub.subscribe("solusdt@depth@100ms");
   // datahub.registerCallback("solusdt@depth@100ms", depthCB);

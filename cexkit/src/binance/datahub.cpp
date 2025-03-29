@@ -4,41 +4,21 @@ namespace cexkit {
 
 namespace binance {
 
-DataHub::DataHub(const std::string &restHostname, const unsigned int restPort,
-                 const std::string &wsHostname, const unsigned int wsPort,
-                 const std::string &caPath, const std::string &apiKey,
-                 const std::string &apiSecret, const std::string &endpoint,
-                 const std::string &proxyHostname, const unsigned int proxyPort)
-    : restHostname_(restHostname),
-      restPort_(restPort),
-      wsHostname_(wsHostname),
-      wsPort_(wsPort),
-      endpoint_(endpoint),
-      proxyHostname_(proxyHostname),
-      proxyPort_(proxyPort),
-      apiKey_(apiKey),
-      apiSecret_(apiSecret),
-      rest_(restHostname, restPort, caPath, apiKey, apiSecret, proxyHostname,
-            proxyPort),
-      ws_(wsHostname, wsPort, caPath, apiKey, apiSecret, endpoint,
-          proxyHostname, proxyPort) {
-  if (endpoint_.empty()) {
-    throw std::runtime_error(
-        "Must pass a valid endpoint to establish websocket connection");
-  }
-}
+DataHub::DataHub(netkit::Rest *rest, netkit::Websocket *ws)
+    : rest_(rest), ws_(ws) {}
 
 DataHub::~DataHub() {
   for (const auto &orderbook : orderbooks_) {
     delete orderbook.second;
   }
+  ws_->join();
 }
 
-void DataHub::join() { ws_.join(); }
+void DataHub::join() { ws_->join(); }
 
 void DataHub::subscribe(const std::string &stream) {
   streams_.insert(stream);
-  ws_.subscribe(stream);
+  ws_->subscribe(stream);
 }
 
 void DataHub::subscribe(const std::vector<std::string> &streams) {
@@ -50,7 +30,7 @@ void DataHub::subscribe(const std::vector<std::string> &streams) {
 void DataHub::unsubscribe(const std::string &stream) {
   if (streams_.contains(stream)) {
     streams_.erase(stream);
-    ws_.unsubscribe(stream);
+    ws_->unsubscribe(stream);
   } else {
     std::cerr << "Stream " << stream << " was not subscribed before\n";
   }
@@ -82,7 +62,7 @@ void DataHub::subscribeOrderBook(const std::string &symbol) {
 
   // Fetch snapshot from exchange rest API.
   while (true) {
-    std::string snapshot = rest_.sendPublicRequest(
+    std::string snapshot = rest_->sendPublicRequest(
         "/api/v3/depth", "GET", {{"symbol", upper(symbol)}, {"limit", "10"}});
     if (orderbooks_[symbol]->initDepth(std::move(snapshot))) {
       break;
@@ -96,7 +76,15 @@ void DataHub::unsubscribeOrderBook(const std::string &symbol) {
   delete orderbooks_[symbol];
 }
 
-void DataHub::listSubscriptopns() { ws_.listSubscriptions(); }
+OrderBook *DataHub::orderbook(const std::string &symbol) {
+  if (streams_.contains(symbol)) {
+    return orderbooks_[symbol];
+  } else {
+    return nullptr;
+  }
+}
+
+void DataHub::listSubscriptopns() { ws_->listSubscriptions(); }
 
 void DataHub::updateOBByEvent(netkit::Frame frame) {
   nlohmann::json payload = nlohmann::json::parse(frame.payload);
@@ -112,7 +100,7 @@ void DataHub::updateOBByEvent(netkit::Frame frame) {
 
 void DataHub::registerCallback(const std::string &stream,
                                const std::function<void(netkit::Frame)> &cb) {
-  ws_.registerCallback(stream, cb);
+  ws_->registerCallback(stream, cb);
 }
 
 }  // namespace binance
