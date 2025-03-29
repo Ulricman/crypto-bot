@@ -36,6 +36,37 @@ struct Frame {
   bool fin, masked;
   Opcode opcode;
   std::string payload;
+
+  Frame() = delete;
+  Frame(bool _fin_, bool _masked_, Opcode _opcode_, const char* _payload_,
+        uint64_t _payloadLen_)
+      : fin(_fin_),
+        masked(_masked_),
+        opcode(_opcode_),
+        payload(_payload_, _payloadLen_) {}
+  Frame(bool _fin_, bool _masked_, Opcode _opcode_, std::string&& _payload_)
+      : fin(_fin_),
+        masked(_masked_),
+        opcode(_opcode_),
+        payload(std::move(_payload_)) {}
+
+  ~Frame() {}
+  Frame(const Frame&) = delete;
+  Frame& operator=(const Frame&) = delete;
+
+  Frame(Frame&& frame)
+      : fin(frame.fin),
+        masked(frame.masked),
+        opcode(frame.opcode),
+        payload(std::move(frame.payload)) {}
+
+  Frame& operator=(Frame&& frame) {
+    fin = frame.fin;
+    masked = frame.masked;
+    opcode = frame.opcode;
+    payload = std::move(frame.payload);
+    return *this;
+  }
 };
 
 class Websocket {
@@ -66,7 +97,7 @@ class Websocket {
   void streamLoop();
 
   // TODO: use move assignment operator.
-  void pong(Frame frame);
+  void pong(std::string);
 
  public:
   Websocket(const std::string& hostname, const unsigned int port,

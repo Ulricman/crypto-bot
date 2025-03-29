@@ -70,8 +70,9 @@ void DataHub::subscribeOrderBook(const std::string &symbol) {
 
   // Subscribe websocket stream from exchange.
   subscribe(stream);
-  registerCallback(stream,
-                   [this](netkit::Frame frame) { updateOBByEvent(frame); });
+  registerCallback(stream, [this](netkit::Frame frame) {
+    updateOBByEvent(std::move(frame));
+  });
 
   // Wait until orderbook has buffered some events, so that we can check
   // the validity of snapshot.

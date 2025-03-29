@@ -58,13 +58,12 @@ Frame Websocket::parseWebsocketFrame(const char* buffer, size_t len) {
   // For more detailed information about frame structure, refer to RFC6455:
   // https://datatracker.ietf.org/doc/html/rfc6455#autoid-21:~:text=).%0A%0A5.2.-,Base%20Framing%20Protocol,-This%20wire%20format
   const unsigned char* data = reinterpret_cast<const unsigned char*>(buffer);
-  Frame frame;
-  frame.fin = (data[0] & 0x80) != 0;
-  frame.opcode = static_cast<Opcode>(data[0] & 0x0F);
-  frame.masked = data[1] & 0x80;
+  bool fin = (data[0] & 0x80) != 0;
+  Opcode opcode = static_cast<Opcode>(data[0] & 0x0F);
+  bool masked = data[1] & 0x80;
   size_t payloadLen = data[1] & 0x7F;
 
-  if (frame.masked) {
+  if (masked) {
     throw std::runtime_error("Error: received masked frame from server");
   }
 
@@ -80,11 +79,7 @@ Frame Websocket::parseWebsocketFrame(const char* buffer, size_t len) {
     offset += 8;
   }
 
-  // Extract payload. (Note that server MUST NOT mask data)
-  // frame.payload = std::string(buffer, offset);
-  for (int i = 0; i < payloadLen; ++i) {
-    frame.payload.push_back(buffer[offset + i]);
-  }
+  Frame frame(fin, masked, opcode, &buffer[offset], payloadLen);
 
   return frame;
 }
@@ -92,6 +87,7 @@ Frame Websocket::parseWebsocketFrame(const char* buffer, size_t len) {
 void Websocket::sendWebsocketFrame(Frame frame) {
   // Compute buffer size.
   uint64_t payloadLen = frame.payload.size();
+  bool masked = frame.masked;
   int payloadLenSize;
   if (payloadLen < 126) {
     payloadLenSize = 1;
@@ -100,25 +96,25 @@ void Websocket::sendWebsocketFrame(Frame frame) {
   } else {
     payloadLenSize = 9;
   }
-  size_t bufferSize = 1 + payloadLenSize + frame.masked * 4 + payloadLen;
+  size_t bufferSize = 1 + payloadLenSize + masked * 4 + payloadLen;
 
   unsigned char buffer[bufferSize];
 
   buffer[0] = (frame.fin << 7) | frame.opcode;
   if (payloadLen < 126) {
-    buffer[1] = (payloadLen & 0x7F) | (frame.masked << 7);
+    buffer[1] = (payloadLen & 0x7F) | (masked << 7);
   } else if (payloadLen < 0x8000) {
-    buffer[1] = (frame.masked << 7) | 0x7E;
+    buffer[1] = (masked << 7) | 0x7E;
     buffer[2] = payloadLen & 0xFF00;
     buffer[3] = payloadLen & 0xFF;
   } else {
-    buffer[1] = (frame.masked << 7) | 0x7F;
+    buffer[1] = (masked << 7) | 0x7F;
     for (int i = 0; i < 8; ++i) {
       buffer[2 + i] = payloadLen & (0xFF << 8 * (7 - i));
     }
   }
   ssize_t offset = 1 + payloadLenSize;
-  if (frame.masked) {
+  if (masked) {
     // Mask payload with temporarily fixed masking-key.
     char mask[4] = {1, 2, 3, 4};
     for (int i = 0; i < 4; ++i) {
@@ -131,17 +127,17 @@ void Websocket::sendWebsocketFrame(Frame frame) {
       buffer[offset + i] = frame.payload[i] ^ mask[i % 4];
     }
   } else {
-    memcpy(buffer + offset, frame.payload.data(), payloadLen);
+    memcpy(&buffer[offset], frame.payload.data(), payloadLen);
   }
 
   // Send frame to the server.
   SSL_write(ssl_, buffer, bufferSize);
 }
 
-void Websocket::pong(Frame frame) {
-  frame.opcode = Opcode::PONG_FRAME;
-  frame.masked = true;
-  sendWebsocketFrame(frame);
+void Websocket::pong(std::string payload) {
+  Frame frame(true, true, Opcode::PONG_FRAME, std::move(payload));
+
+  sendWebsocketFrame(std::move(frame));
 }
 
 void Websocket::streamLoop() {
@@ -170,17 +166,15 @@ void Websocket::streamLoop() {
     Frame frame = parseWebsocketFrame(buffer, bytes);
     if (frame.opcode == Opcode::PING_FRAME) {
       std::cout << "Ping Frame\n";
-      std::thread(&Websocket::pong, this, frame).detach();
+      std::thread(&Websocket::pong, this, frame.payload).detach();
     }
     if (!frame.payload.empty()) {
-      // std::cout << frame.payload << std::endl;
-
       // Parse frame and call callback function if registered.
       nlohmann::json payload = nlohmann::json::parse(frame.payload);
       if (payload.contains("stream")) {
         std::string stream = payload["stream"];
         if (callbacks_.contains(stream)) {
-          callbacks_[stream](frame);
+          callbacks_[stream](std::move(frame));
         }
       }
     }
@@ -237,15 +231,11 @@ void Websocket::subscribe(const std::vector<std::string>& streams) {
   request["params"] = streams;
   request["id"] = 1;
 
-  Frame frame;
-  frame.fin = true;
-  frame.masked = true;
-  frame.opcode = Opcode::TEXT_FRAME;
-  frame.payload = request.dump();
+  std::string payload = request.dump();
+  std::cout << "subscribe: " << payload << std::endl;
+  Frame frame{true, true, Opcode::TEXT_FRAME, std::move(payload)};
 
-  std::cout << "subscribe: " << request.dump() << std::endl;
-
-  sendWebsocketFrame(frame);
+  sendWebsocketFrame(std::move(frame));
 }
 
 void Websocket::unsubscribe(const std::vector<std::string>& streams) {
@@ -254,13 +244,11 @@ void Websocket::unsubscribe(const std::vector<std::string>& streams) {
   request["params"] = streams;
   request["id"] = 312;
 
-  Frame frame;
-  frame.fin = true;
-  frame.masked = true;
-  frame.opcode = Opcode::TEXT_FRAME;
-  frame.payload = request.dump();
-  std::cout << request.dump() << std::endl;
-  sendWebsocketFrame(frame);
+  std::string payload = request.dump();
+  std::cout << payload << std::endl;
+  Frame frame(true, true, Opcode::TEXT_FRAME, std::move(payload));
+
+  sendWebsocketFrame(std::move(frame));
 }
 
 void Websocket::unsubscribe(const std::string& stream) {
@@ -272,12 +260,10 @@ void Websocket::listSubscriptions() {
   request["method"] = "LIST_SUBSCRIPTIONS";
   request["id"] = 3;
 
-  Frame frame;
-  frame.fin = true;
-  frame.masked = true;
-  frame.opcode = Opcode::TEXT_FRAME;
-  frame.payload = request.dump();
-  sendWebsocketFrame(frame);
+  std::string payload = request.dump();
+  Frame frame(true, true, Opcode::TEXT_FRAME, std::move(payload));
+
+  sendWebsocketFrame(std::move(frame));
 }
 
 int Websocket::numStreams() const { return streams_.size(); }
