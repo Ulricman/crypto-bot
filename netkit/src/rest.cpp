@@ -78,7 +78,7 @@ std::string Rest::executeRequest(
   for (const auto &header : headers) {
     oss << header.first << ":" << header.second << "\r\n";
   }
-  oss << "User-Rest: OpenSSL/1.1.1\r\nConnection: close\r\n\r\n";
+  oss << "User-Agent: OpenSSL/1.1.1\r\nConnection: keep-alive\r\n\r\n";
 
   // Send HTTPS request.
   std::string message = oss.str();
@@ -92,16 +92,25 @@ std::string Rest::executeRequest(
   std::string response;
   char buffer[1024];
   ssize_t bytes;
+  int contentLength = -1;
   while ((bytes = SSL_read(ssl_, buffer, sizeof(buffer))) > 0) {
     response.append(buffer, bytes);
+    if (contentLength == -1) {
+      // Get the lengthe of the response body to determine the end of response.
+      auto headerIt = response.find("\r\n\r\n");
+      if (headerIt != std::string::npos) {
+        auto contentLengthIt = response.find("Content-Length");
+        std::istringstream iss(response.substr(contentLengthIt + 16));
+        iss >> contentLength;
+
+        // Remove the header.
+        response = response.substr(headerIt + 4);
+      }
+    } else if (response.size() == contentLength) {
+      break;
+    }
   }
 
-  // TODO: Make Skip headers or not as an option.
-  // Skip the response headers.
-  auto headerIt = response.find("\r\n\r\n");
-  if (headerIt != std::string::npos) {
-    response = response.substr(headerIt + 4);
-  }
   return response;
 }
 

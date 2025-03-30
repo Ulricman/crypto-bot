@@ -4,7 +4,6 @@
 #include <string>
 #include <thread>
 
-#include "cexkit/binance/broker.hpp"
 #include "cexkit/binance/datahub.hpp"
 
 int main() {
@@ -26,7 +25,6 @@ int main() {
   netkit::Websocket ws(wsHostname, wsPort, config, endpoint);
 
   cexkit::binance::DataHub datahub(&rest, &ws);
-  cexkit::binance::Broker broker(&rest, &ws);
 
   std::cout << "datahub setup done!\n";
   // std::this_thread::sleep_for(std::chrono::seconds(2));
