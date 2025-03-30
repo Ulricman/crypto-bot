@@ -14,39 +14,24 @@
 #include <string>
 #include <unordered_map>
 
+#include "netkit/netdef.hpp"
 #include "netkit/proxy.hpp"
 #include "netkit/rest.hpp"
 #include "netkit/utils.hpp"
-#include "nlohmann/json.hpp"
-
-using json = nlohmann::json;
-
-void readConfig(const char *configPath) {
-  std::ifstream file(configPath);
-  json config;
-  file >> config;
-}
 
 int main() {
   // Read configs.
   const char *configPath = "/home/jeffrey/crypto-bot/config.json";
   std::ifstream file(configPath);
-  json config;
+  netkit::Config config;
   file >> config;
   file.close();
 
-  const std::string caPath = config["ca_path"];
-  const std::string apiKey = config["api_key"];
-  const std::string secretKey = config["api_secret"];
-
   const std::string hostname = "api.binance.com";
   const int port = 443;
-  const std::string proxyHostname = config["proxy_host"];
-  const int proxyPort = config["proxy_port"];
 
   // Main parts.
-  netkit::Rest rest(hostname, port, caPath.data(), apiKey, secretKey,
-                    proxyHostname, proxyPort);
+  netkit::Rest rest(hostname, port, config);
 
   // std::cout << agent.sendPublicRequest("/api/v3/depth", {{"symbol",
   // "SOLUSDT"}})

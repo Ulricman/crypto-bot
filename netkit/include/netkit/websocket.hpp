@@ -18,6 +18,7 @@
 #include <thread>
 #include <vector>
 
+#include "netkit/netdef.hpp"
 #include "netkit/proxy.hpp"
 #include "netkit/utils.hpp"
 
@@ -103,10 +104,7 @@ class Websocket {
 
  public:
   Websocket(const std::string& hostname, const unsigned int port,
-            const std::string& caPath, const std::string& apiKey,
-            const std::string& apiSecret, const std::string& endpoint_,
-            const std::string& proxyHostname = "",
-            const unsigned int proxyPort = 0);
+            const Config& config, const std::string& endpoint_);
   ~Websocket();
 
   void join();

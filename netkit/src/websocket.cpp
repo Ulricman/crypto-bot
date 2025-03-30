@@ -3,20 +3,17 @@
 namespace netkit {
 
 Websocket::Websocket(const std::string& hostname, const unsigned int port,
-                     const std::string& caPath, const std::string& apiKey,
-                     const std::string& apiSecret, const std::string& endpoint,
-                     const std::string& proxyHostname,
-                     const unsigned int proxyPort)
+                     const Config& config, const std::string& endpoint)
     : hostname_(hostname),
       port_(port),
       endpoint_(endpoint),
-      apiKey_(apiKey),
-      apiSecret_(apiSecret),
-      proxyHostname_(proxyHostname),
-      proxyPort_(proxyPort),
+      apiKey_(config.apiKey),
+      apiSecret_(config.apiSecret),
+      proxyHostname_(config.proxyHost),
+      proxyPort_(config.proxyPort),
       streamLoop_(nullptr) {
   // Create socket or proxy tunnel if proxy is given.
-  if (!proxyHostname.empty()) {
+  if (!proxyHostname_.empty()) {
     sockFd_ = proxyTunnel(proxyHostname_, proxyPort_, hostname_, port_);
   } else {
     // Resolve IP of the hostname.
@@ -43,7 +40,7 @@ Websocket::Websocket(const std::string& hostname, const unsigned int port,
 
   // Initialize OpenSSL and define SSL context.
   initOpenssl();
-  ctx_ = createSSLContext(caPath.data());
+  ctx_ = createSSLContext(config.caPath.data());
 
   // Create SSL object and bind to socket.
   ssl_ = SSL_new(ctx_);

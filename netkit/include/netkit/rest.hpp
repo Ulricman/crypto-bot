@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "netkit/netdef.hpp"
 #include "netkit/proxy.hpp"
 
 namespace netkit {
@@ -33,9 +34,7 @@ class Rest {
 
  public:
   Rest(const std::string &hostname, const unsigned int port,
-       const std::string &caPath, const std::string &apiKey,
-       const std::string &apiSecret, const std::string &proxyHostname = "",
-       const unsigned int proxyPort = 0);
+       const Config &config);
   Rest(const Rest &) = delete;
   Rest &operator=(const Rest &) = delete;
   Rest(Rest &&) = delete;

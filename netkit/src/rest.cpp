@@ -3,15 +3,13 @@
 namespace netkit {
 
 Rest::Rest(const std::string &hostname, const unsigned int port,
-           const std::string &caPath, const std::string &apiKey,
-           const std::string &apiSecret, const std::string &proxyHostname,
-           const unsigned int proxyPort)
+           const Config &config)
     : hostname_(hostname),
       port_(port),
-      apiKey_(apiKey),
-      apiSecret_(apiSecret),
-      proxyHostname_(proxyHostname),
-      proxyPort_(proxyPort) {
+      apiKey_(config.apiKey),
+      apiSecret_(config.apiSecret),
+      proxyHostname_(config.proxyHost),
+      proxyPort_(config.proxyPort) {
   // Create socket or proxy tunnel if proxy is given.
   // TODO: requests without proxt needs to be checked.
   if (!proxyHostname_.empty()) {
@@ -41,7 +39,7 @@ Rest::Rest(const std::string &hostname, const unsigned int port,
 
   // Initialize OpenSSL and define SSL context.
   initOpenssl();
-  ctx_ = createSSLContext(caPath.data());
+  ctx_ = createSSLContext(config.caPath.data());
 
   // Create SSL object and bind to socket.
   ssl_ = SSL_new(ctx_);
