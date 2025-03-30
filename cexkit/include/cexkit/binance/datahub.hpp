@@ -8,6 +8,7 @@
 
 #include "cexkit/binance/orderbook.hpp"
 #include "cexkit/utils.hpp"
+#include "netkit/netdef.hpp"
 #include "netkit/rest.hpp"
 #include "netkit/websocket.hpp"
 
@@ -36,8 +37,12 @@ class DataHub {
    */
   void updateOBByEvent(netkit::Frame frame);
 
+  void disconnectCallback();
+
  public:
-  DataHub(netkit::Rest *rest, netkit::Websocket *ws);
+  DataHub(const std::string &restHost, int restPort, const std::string &wsHost,
+          int wsPort, const std::string &endpoint,
+          const netkit::Config &config);
   ~DataHub();
 
   void join();

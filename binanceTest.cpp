@@ -21,10 +21,11 @@ int main() {
   const int restPort = 443;
 
   const std::string endpoint = "/stream";
-  netkit::Rest rest(restHostname, restPort, config);
-  netkit::Websocket ws(wsHostname, wsPort, config, endpoint);
+  // auto rest = new netkit::Rest(restHostname, restPort, config);
+  // auto ws = new netkit::Websocket(wsHostname, wsPort, config, endpoint);
 
-  cexkit::binance::DataHub datahub(&rest, &ws);
+  cexkit::binance::DataHub datahub(restHostname, restPort, wsHostname, wsPort,
+                                   endpoint, config);
 
   std::cout << "datahub setup done!\n";
   // std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -41,5 +42,6 @@ int main() {
   // datahub.subscribe("btcusdt@depth@100ms");
   // datahub.registerCallback("btcusdt@depth@100ms", depthCB);
   datahub.subscribeOrderBook("solusdt");
+  datahub.subscribeOrderBook("bnbusdt");
   datahub.join();
 }

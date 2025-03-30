@@ -71,10 +71,10 @@ struct Frame {
 };
 
 class Websocket {
-  const std::string hostname_;
+  const std::string host_;
   const unsigned int port_;
   const std::string endpoint_;
-  const std::string proxyHostname_;
+  const std::string proxyHost_;
   const unsigned int proxyPort_;
   int sockFd_;
   SSL_CTX* ctx_;
@@ -86,6 +86,9 @@ class Websocket {
   std::map<std::string, std::function<void(Frame)>> callbacks_;
 
   std::thread* streamLoop_;
+
+  // * If registered, would be called in streamLoop_ when disconnected.
+  std::function<void()> disconnectCallback_;
 
  private:
   Frame parseWebsocketFrame(const char* buffer, size_t len);
@@ -119,7 +122,13 @@ class Websocket {
 
   // * Register a callback for a specific stream.
   void registerCallback(const std::string& stream,
-                        const std::function<void(Frame)>&);
+                        const std::function<void(Frame)>& cb);
+
+  // * Register a callback that would be called if the websocket disconnects.
+  void registerDisconnectCallback(const std::function<void()>& cb) {
+    disconnectCallback_ = cb;
+  }
+
 };  // Websocket
 
 }  // namespace netkit

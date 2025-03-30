@@ -2,21 +2,21 @@
 
 namespace netkit {
 
-Rest::Rest(const std::string &hostname, const unsigned int port,
+Rest::Rest(const std::string &host, const unsigned int port,
            const Config &config)
-    : hostname_(hostname),
+    : host_(host),
       port_(port),
       apiKey_(config.apiKey),
       apiSecret_(config.apiSecret),
-      proxyHostname_(config.proxyHost),
+      proxyHost_(config.proxyHost),
       proxyPort_(config.proxyPort) {
   // Create socket or proxy tunnel if proxy is given.
   // TODO: requests without proxt needs to be checked.
-  if (!proxyHostname_.empty()) {
-    sockFd_ = proxyTunnel(proxyHostname_, proxyPort_, hostname_, port_);
+  if (!proxyHost_.empty()) {
+    sockFd_ = proxyTunnel(proxyHost_, proxyPort_, host_, port_);
   } else {
     // Resolve IP of the hostname.
-    std::string ip = resolveHostname(hostname);
+    std::string ip = resolveHostname(host);
 
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
@@ -44,7 +44,7 @@ Rest::Rest(const std::string &hostname, const unsigned int port,
   // Create SSL object and bind to socket.
   ssl_ = SSL_new(ctx_);
   SSL_set_fd(ssl_, sockFd_);
-  SSL_set_tlsext_host_name(ssl_, hostname_.data());
+  SSL_set_tlsext_host_name(ssl_, host_.data());
 
   // Perform SSL handshake.
   if (SSL_connect(ssl_) != 1) {
@@ -74,7 +74,7 @@ std::string Rest::executeRequest(
 
   // Perpare HTTPS request message.
   oss << httpMethod << " " << url << " HTTP/1.1\r\n";
-  oss << "Host: " << hostname_ << "\r\n";
+  oss << "Host: " << host_ << "\r\n";
   for (const auto &header : headers) {
     oss << header.first << ":" << header.second << "\r\n";
   }
@@ -84,8 +84,7 @@ std::string Rest::executeRequest(
   std::string message = oss.str();
   if (SSL_write(ssl_, message.data(), message.size()) <= 0) {
     std::cerr << "Failed sending HTTPS request\n";
-    ERR_print_errors_fp(stderr);
-    return "";
+    throw std::runtime_error("Failed sending HTTPS request\n");
   }
 
   // Receive HTTPS response.

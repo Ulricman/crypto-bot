@@ -15,9 +15,9 @@ namespace netkit {
 
 // * An agent perform HTTPS requests.
 class Rest {
-  const std::string hostname_;
+  const std::string host_;
   const unsigned int port_;
-  const std::string proxyHostname_;
+  const std::string proxyHost_;
   const unsigned int proxyPort_;
   int sockFd_;
   SSL_CTX *ctx_;
@@ -33,8 +33,7 @@ class Rest {
       const std::unordered_map<std::string, std::string> &headers = {});
 
  public:
-  Rest(const std::string &hostname, const unsigned int port,
-       const Config &config);
+  Rest(const std::string &host, const unsigned int port, const Config &config);
   Rest(const Rest &) = delete;
   Rest &operator=(const Rest &) = delete;
   Rest(Rest &&) = delete;

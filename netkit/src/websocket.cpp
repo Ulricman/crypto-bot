@@ -2,22 +2,22 @@
 
 namespace netkit {
 
-Websocket::Websocket(const std::string& hostname, const unsigned int port,
+Websocket::Websocket(const std::string& host, const unsigned int port,
                      const Config& config, const std::string& endpoint)
-    : hostname_(hostname),
+    : host_(host),
       port_(port),
       endpoint_(endpoint),
       apiKey_(config.apiKey),
       apiSecret_(config.apiSecret),
-      proxyHostname_(config.proxyHost),
+      proxyHost_(config.proxyHost),
       proxyPort_(config.proxyPort),
       streamLoop_(nullptr) {
   // Create socket or proxy tunnel if proxy is given.
-  if (!proxyHostname_.empty()) {
-    sockFd_ = proxyTunnel(proxyHostname_, proxyPort_, hostname_, port_);
+  if (!proxyHost_.empty()) {
+    sockFd_ = proxyTunnel(proxyHost_, proxyPort_, host_, port_);
   } else {
     // Resolve IP of the hostname.
-    std::string ip = resolveHostname(hostname);
+    std::string ip = resolveHostname(host);
 
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
@@ -45,7 +45,7 @@ Websocket::Websocket(const std::string& hostname, const unsigned int port,
   // Create SSL object and bind to socket.
   ssl_ = SSL_new(ctx_);
   SSL_set_fd(ssl_, sockFd_);
-  SSL_set_tlsext_host_name(ssl_, hostname_.data());
+  SSL_set_tlsext_host_name(ssl_, host_.data());
 
   // Perform SSL handshake.
   if (SSL_connect(ssl_) != 1) {
@@ -172,6 +172,9 @@ void Websocket::streamLoop() {
     bytes = SSL_read(ssl_, buffer, sizeof(buffer));
     if (bytes <= 0) {
       std::cout << "Disconnected\n";
+      if (disconnectCallback_) {
+        disconnectCallback_();
+      }
       break;
     }
     auto now = std::chrono::system_clock::now();
@@ -210,7 +213,7 @@ bool Websocket::connectEndpoint(const std::string& endpoint) {
   // Fill upgrade request message.
   std::ostringstream oss;
   oss << "GET " << endpoint << " HTTP/1.1\r\n";
-  oss << "Host: " << hostname_ << "\r\n";
+  oss << "Host: " << host_ << "\r\n";
   oss << "Upgrade: websocket\r\n";
   oss << "Connection: Upgrade\r\n";
   oss << "Sec-WebSocket-Key: " << wsKey << "\r\n";

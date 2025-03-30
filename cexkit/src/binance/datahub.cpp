@@ -4,14 +4,23 @@ namespace cexkit {
 
 namespace binance {
 
-DataHub::DataHub(netkit::Rest *rest, netkit::Websocket *ws)
-    : rest_(rest), ws_(ws) {}
+void DataHub::disconnectCallback() { std::cout << "disconnectCallback()\n"; }
+
+DataHub::DataHub(const std::string &restHost, int restPort,
+                 const std::string &wsHost, int wsPort,
+                 const std::string &endpoint, const netkit::Config &config) {
+  rest_ = new netkit::Rest(restHost, restPort, config);
+  ws_ = new netkit::Websocket(wsHost, wsPort, config, endpoint);
+  ws_->registerDisconnectCallback([this]() { this->disconnectCallback(); });
+}
 
 DataHub::~DataHub() {
   for (const auto &orderbook : orderbooks_) {
     delete orderbook.second;
   }
   ws_->join();
+  delete rest_;
+  delete ws_;
 }
 
 void DataHub::join() { ws_->join(); }
@@ -47,7 +56,7 @@ void DataHub::subscribeOrderBook(const std::string &symbol) {
     throw std::runtime_error(std::string("Local OrderBook of ") + symbol +
                              std::string(" has already been maintained"));
   }
-  orderbooks_[symbol] = new OrderBook(eventBufferSize_);
+  orderbooks_[symbol] = new OrderBook(symbol, eventBufferSize_);
   std::string stream = symbol + "@depth@100ms";
 
   // Subscribe websocket stream from exchange.
@@ -64,6 +73,11 @@ void DataHub::subscribeOrderBook(const std::string &symbol) {
   while (true) {
     std::string snapshot = rest_->sendPublicRequest(
         "/api/v3/depth", "GET", {{"symbol", upper(symbol)}, {"limit", "10"}});
+    std::cout << "snapshot: " << symbol << std::endl;
+    std::cout << snapshot << std::endl;
+    if (snapshot.empty()) {
+      continue;
+    }
     if (orderbooks_[symbol]->initDepth(std::move(snapshot))) {
       break;
     }
